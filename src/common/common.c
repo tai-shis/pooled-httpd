@@ -1,0 +1,1 @@
+int common_placeholder(void) { return 0; }
