@@ -1,9 +1,9 @@
-#include <routes.h>
+#include "routes.h"
 
 static const route_info ROUTE_TABLE[ROUTE_COUNT] = {
-    // route_id: route_name, route_kind, ms, jitter, (bimodal low ms), (bimodal high ms)
+    // route_id: route_name, route_kind, ms, jitter, (long percent change), (long ms)
     [ROUTE_FAST] = { "/fast", ROUTE_KIND_CPU, 1, 10, 0, 0 },
-    [ROUTE_SLOW] = { "/slow", ROUTE_KIND_CPU, 500, 10, 0, 0 },
+    [ROUTE_SLOW] = { "/slow", ROUTE_KIND_CPU, 50, 10, 0, 0 },
     [ROUTE_BIMODAL] = { "/bimodal", ROUTE_KIND_CPU, 1, 10, 10, 100 },
     [ROUTE_API] = { "/api", ROUTE_KIND_SLEEP, 20, 10, 0, 0 },
     [ROUTE_DB] = { "/db", ROUTE_KIND_SLEEP, 10, 50, 0, 0 },
