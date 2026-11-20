@@ -99,9 +99,8 @@ The queue is the textbook bounded buffer with three semaphores: mutex (1), empty
 | ----- | ---- | ------------ | ------- |
 | `/fast` | CPU | ~1ms, +/- 10% | Experiment #2 and #3 |
 | `/slow` | CPU | ~50ms, +/- 10%|Experiment #2 and #3 |
-| `/bimodal` | CPU | 90% ~1ms, 10% ~100ms| Experiment #3 (predictor failure) |
-| `/drift` | CPU | mean shifts mid-run | Experiment #3 (alpha sweep) |
-| `/api` | Sleep | ~20ms | Experiment #2 (sleep-heavy) |
+| `/bimodal` | CPU | 90% ~1ms, 10% ~100ms| Experiment #3 (predictor failure, alpha sweep) |
+| `/api` | Sleep | ~20ms, +/- 10% | Experiment #2 (sleep-heavy) |
 | `/db` | Sleep | ~10ms, +/- 50%  | none yet  |
 ### Routes (synthetic)
 CPU routes spin through a calibrated amount of work, so CPU contention shows up as latency. Sleep routes use nanosleep (blocked, no CPU) to simulate network calls. Variance comes from a seeded per-thread RNG.
@@ -165,12 +164,12 @@ We have six experiments to produce evidence for the report and presentation. Eve
 | ------------ | ---------- | ----------- | --------------------- | --------------- |
 | 1 | Thread-per-request vs. pool | C (concurrent clients) | throughput, avg. latency, thread count, memory, failures  | Similar when C is low, thread-per-request degrades as C grows and then fails when C is large |
 | 2 | Pool size vs. cores | Pool size; CPU-heavy vs. sleep-heavy | Throughput, service minus CPU time gap, involuntary context switches | On a single-core, CPU-heavy throughput peaks at a small pool and proceeds to fall as extra threads add context switch overhead. Sleep-heavy benefits from more threads |
-| 3 | Queue policy | FIFO vs. Priority: sweep the weight and alpha  | Average wait per route | priority lowers `/fast` wait and raises `/slow`. Smaller 'w' caps `/slow` wait time. `/bimodal` shows prediction failure. `/drift` shows how fast tau adapts per alpha |
+| 3 | Queue policy | FIFO vs. Priority: sweep the weight and alpha  | Average wait per route | priority lowers `/fast` wait and raises `/slow`. Smaller 'w' caps `/slow` wait time. `/bimodal` shows prediction failure, and how much tau swings per alpha |
 | 4 |Queue structure | Ring buffer (FIFO) vs. heap (priority) | Queue lock wait, contended %, throughput | The heap lengthens the critical section and raises the lock wait | 
 | 5 | Full-queue behaviour | Queue capacity. Block vs. reject | Average latency, Rate of 503 errors returned | Larger queue means fewer errors but higher latency. Reject policy will put an upper-bound on the latency
 | 6 | Observer effect | Live view attached vs. headless. `stderr` vs `--quiet` flag | Throughput, latency | Almost no difference  
 
-E1 runs with ulimit -n raised so threads run out before file descriptors do. The E2 routes are `/fast`, `/slow`, and `/api`; E3 uses `/fast`, `/slow`, `/bimodal`, and `/drift`.
+E1 runs with ulimit -n raised so threads run out before file descriptors do. The E2 routes are `/fast`, `/slow`, and `/api`; E3 uses `/fast`, `/slow`, and `/bimodal`.
 Course concepts the experiments demonstrate:
 - Threads and resource limits: E1 shows creation cost, thread explosion, and EAGAIN.
 - CPU scheduling: E2 shows runnable threads against cores and preemption of CPU routes.
