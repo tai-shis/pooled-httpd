@@ -1,8 +1,6 @@
 #ifndef ROUTES_H
 #define ROUTES_H
 
-#include <string.h>
-
 typedef enum {
     ROUTE_FAST,
     ROUTE_SLOW,

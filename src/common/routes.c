@@ -1,5 +1,8 @@
 #include "routes.h"
 
+#include <string.h>
+
+
 static const route_info ROUTE_TABLE[ROUTE_COUNT] = {
     // route_id: route_name, route_kind, ms, jitter, (long percent change), (long ms)
     [ROUTE_FAST] = { "/fast", ROUTE_KIND_CPU, 1, 10, 0, 0 },
