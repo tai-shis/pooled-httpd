@@ -26,7 +26,7 @@ static int parse_double(const char *str, double low, double high, double *out_nu
     double value = strtod(str, &end);
     // accuracy to 5 sig digs should be enough to get an accurate reading; adjust as required
     double precision = 1e-5; 
-    if (*end != '\0' || errno == ERANGE || end == str || fabs(value - low) < precision || fabs(value - precision) > high) {
+    if (*end != '\0' || errno == ERANGE || end == str || !(value >= low && value <= high)) {
         return ERROR;
     }
     *out_num = value;
@@ -73,7 +73,7 @@ static int set_config_options(int argc, char **argv, config *cfg, const struct o
                 if (parse_long(optarg, 1, MAX_QUEUE, &l_val) == ERROR) {
                     return QUEUE_CAP_OOB;
                 }
-                cfg->queue_capacity = (int) l_val;
+                cfg->queue_capacity = (size_t) l_val;
                 break;
             case 'P':
                 if (parse_long(optarg, 1024, 65535, &l_val) == ERROR) {
@@ -88,7 +88,7 @@ static int set_config_options(int argc, char **argv, config *cfg, const struct o
                 cfg->alpha = d_val;
                 break;
             case 'w':
-                if (parse_double(optarg, 0.0, 1.0, &d_val) == ERROR) {
+                if (parse_double(optarg, 0.0, 10.0, &d_val) == ERROR) {
                     return WEIGHT_VAL_OOB;
                 }
                 cfg->w = d_val;
@@ -112,7 +112,7 @@ static int set_config_options(int argc, char **argv, config *cfg, const struct o
                 cfg->snd_timeout_ms = (int) l_val;
                 break;
             case 'L':
-                if (strlen(optarg) > PATH_MAX) {
+                if (strlen(optarg) >= PATH_MAX) {
                     return LOGPATH_TOO_LONG;
                 }
                 cfg->log_path = optarg;
@@ -121,9 +121,13 @@ static int set_config_options(int argc, char **argv, config *cfg, const struct o
                 cfg->quiet = 1;
                 break;
             default:
-                // No requirement means we keep the default setting for that config entry
+                // Something else happened that we can't really account for here
                 return ERROR;
         }
+    }
+
+    if (optind < argc) {
+        return MALFORMED_ARGS;
     }
     return SUCCESS;
 }
@@ -184,7 +188,7 @@ void print_config(const config *cfg, FILE *out) {
     fprintf(out, "config:\n");
     fprintf(out, "\tport           = %d\n",          cfg->port);
     fprintf(out, "\tthreads        = %d\n",          cfg->num_threads);
-    fprintf(out, "\tqueue capacity = %d\n",          (int) cfg->queue_capacity);
+    fprintf(out, "\tqueue capacity = %u\n",          (unsigned int) cfg->queue_capacity);
     fprintf(out, "\tpolicy         = %s\n",          cfg->policy == QUEUE_FIFO ? "FIFO" : "priority");
     fprintf(out, "\tmodel          = %s\n",          cfg->model == MODEL_POOL ? "pool" : "thread-per-request");
 

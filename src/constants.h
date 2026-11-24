@@ -9,8 +9,8 @@
 #define MAX_WAIT    60000
 // ERRORS
 #define ERROR              -1  // general error
-#define INVALID_MODEL_TYPE -2  // config.c
-#define INVALID_QUEUE_TYPE -3  // config.c
+#define INVALID_MODEL_TYPE -2  // config.c - MOdel type is invalid
+#define INVALID_QUEUE_TYPE -3  // config.c - Queue type is invalid
 #define THREAD_NUM_OOB     -4  // config.c - Thread Request Out Of Bounds
 #define QUEUE_CAP_OOB      -5  // config.c - Queue Request Out Of Bounds
 #define PORT_RANGE_OOB     -6  // config.c - Port Range Out Of Bounds
@@ -20,3 +20,4 @@
 #define RCV_WAIT_OOB       -10 // config.c - Receive Wait Time Out Of Bounds
 #define SND_WAIT_OOB       -11 // config.c - Send Wait Time Out Of Bounds
 #define LOGPATH_TOO_LONG   -12 // config.c - Log Path Too Long
+#define MALFORMED_ARGS     -13 // config.c - optind does not match argc, so there's a malformed input

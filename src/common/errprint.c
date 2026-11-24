@@ -12,7 +12,7 @@ void printerr(int err) {
             fprintf(stderr, "Error: %d - Queue type is invalid. Valid types are: fifo, priority\n", err);
             break;
         case THREAD_NUM_OOB:
-            fprintf(stderr, "Error: %d - Thread number is out of bounds. [%d, %d\n", err, MIN_THREADS, MAX_THREADS);
+            fprintf(stderr, "Error: %d - Thread number is out of bounds. [%d, %d]\n", err, MIN_THREADS, MAX_THREADS);
             break;
         case QUEUE_CAP_OOB:
             fprintf(stderr, "Error: %d - Queue cap is out of bounds. [%d, %d]\n", err, 1, MAX_QUEUE);
