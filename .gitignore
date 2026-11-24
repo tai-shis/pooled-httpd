@@ -1,0 +1,5 @@
+# build output
+src/*/bin/
+/server
+/loadgen
+/view

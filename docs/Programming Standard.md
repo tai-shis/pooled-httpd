@@ -18,7 +18,9 @@ Every function used gets a row in the table below, added by whoever first uses i
 
 | Function | Attribute | Notes |
 |---|---|---|
-| | | |
+| `rand_r()` | MT-Safe | Each thread passes its own state. |
+| `nanosleep()` | No ATTRIBUTES section (system call) | Returns -1 with `errno` set to `EINTR` when interrupted; retry with the remaining time. |
+| `strcmp()` | MT-Safe | |
 
 Signal handlers may only call **async-signal-safe** functions (`man 7 signal-safety`). `printf()`, `malloc()`, and `pthread_mutex_lock()` are not async-signal-safe.
 

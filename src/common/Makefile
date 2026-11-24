@@ -8,6 +8,10 @@ LIB    := $(OBJDIR)/libcommon.a
 
 CFLAGS += -Iinclude
 
+UNITY_OBJ := $(OBJDIR)/unity.o
+TEST_SRCS := $(wildcard tests/test_*.c)
+TEST_BINS := $(TEST_SRCS:tests/%.c=$(OBJDIR)/tests/%)
+
 .PHONY: all test clean
 all: $(LIB)
 
@@ -17,11 +21,21 @@ $(LIB): $(OBJS)
 $(OBJDIR)/%.o: %.c | $(OBJDIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
-$(OBJDIR):
+$(UNITY_OBJ): $(UNITY_DIR)/unity.c | $(OBJDIR)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(OBJDIR)/tests/%: tests/%.c $(UNITY_OBJ) $(LIB) | $(OBJDIR)/tests
+	$(CC) $(CFLAGS) -I$(UNITY_DIR) $< $(UNITY_OBJ) $(LIB) $(LDFLAGS) $(LDLIBS) -o $@
+
+$(OBJDIR) $(OBJDIR)/tests:
 	mkdir -p $@
 
-test:
-	@echo "common: no tests yet"
+# timeout exits 124 on a hang, so a deadlocked test fails the build
+test: $(TEST_BINS)
+	@for t in $(TEST_BINS); do \
+		echo "== $$t"; \
+		timeout $(TEST_TIMEOUT) ./$$t || exit 1; \
+	done
 
 clean:
 	rm -rf bin

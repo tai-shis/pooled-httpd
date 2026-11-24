@@ -12,17 +12,17 @@ typedef struct {
     queue_policy policy;
 
     // loadgen info
-    const char  *host;
-    int          rps;
-    int          duration_s;
-    int          connections;
+    const char *host;
+    int         rps;
+    int         duration_s;
+    int         connections;
 
     // view info (TODO)
     // and others
 } config;
 
 void config_defaults(config *cfg);
-// 0 ok, -1 error 
-int  config_parse(config *cfg, int argc, char **argv);  
+// 0 ok, -1 error
+int config_parse(config *cfg, int argc, char **argv);
 
 #endif

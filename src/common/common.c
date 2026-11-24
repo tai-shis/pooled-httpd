@@ -1,1 +1,3 @@
-int common_placeholder(void) { return 0; }
+int common_placeholder(void) {
+    return 0;
+}
