@@ -103,7 +103,13 @@ The queue is the textbook bounded buffer with three semaphores: mutex (1), empty
 | `/api` | Sleep | ~20ms, +/- 10% | Experiment #2 (sleep-heavy) |
 | `/db` | Sleep | ~10ms, +/- 50%  | none yet  |
 ### Routes (synthetic)
-CPU routes spin through a calibrated amount of work, so CPU contention shows up as latency. Sleep routes use nanosleep (blocked, no CPU) to simulate network calls. Variance comes from a seeded per-thread RNG.
+The service times in the table are rough targets, not exact values.
+
+- **CPU routes** busy-loop for a fixed number of iterations: the chosen service time multiplied by `ITERATIONS_PER_MS`, so CPU contention shows up as latency. `ITERATIONS_PER_MS` is a rough constant, tuned by hand on the course VM with the release build. The debug and TSan builds run the same loop more slowly, so experiments always use the release build.
+- **Sleep routes** use `nanosleep` (blocked, no CPU) to simulate network calls. An interrupted sleep (`EINTR`) is retried with the time remaining.
+- **Service time per request:** the route's mean plus uniform jitter of up to +/-`jitter_pct`% of that mean. `/bimodal` first picks its long mean (~100ms) on `long_pct`% of requests, and its short mean otherwise.
+- **Variance** comes from `rand_r()`, with each worker passing its own state seeded from the config seed. The same seed gives the same run, and no RNG state is shared between threads.
+- **Code:** the route table (ids, paths, kinds, and timing) is in `src/common/routes.c`. Picking a service time (`get_service_ms()`) and running a route (`service_route()`) are in `src/server/serverlib.c`.
 
 ### Robustness
 - HTTP parsing: request line only; read until \r\n\r\n is complete, handling split reads. Respond 400 for malformed requests, 404 for unknown routes, 405 for the wrong method.
