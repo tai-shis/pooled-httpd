@@ -3,11 +3,8 @@
 #include "routes.h"
 
 static const char *const EXPECTED_PATHS[ROUTE_COUNT] = {
-    [ROUTE_FAST]    = "/fast",
-    [ROUTE_SLOW]    = "/slow",
-    [ROUTE_BIMODAL] = "/bimodal",
-    [ROUTE_API]     = "/api",
-    [ROUTE_DB]      = "/db",
+    [ROUTE_FAST] = "/fast", [ROUTE_SLOW] = "/slow", [ROUTE_BIMODAL] = "/bimodal",
+    [ROUTE_API] = "/api",   [ROUTE_DB] = "/db",
 };
 
 void setUp(void) {

@@ -22,35 +22,36 @@ static double get_mean_ms(const route_info *route, unsigned int *seed) {
         return route->mean_ms;
     }
 
-    if (get_random_fraction(seed) < (route->long_pct / PERCENT)) { 
+    if (get_random_fraction(seed) < (route->long_pct / PERCENT)) {
         return route->long_mean_ms;
-    } 
+    }
 
     return route->mean_ms;
 }
 
-static double get_jitter(const double mean_ms, const unsigned int jitter_percentage, unsigned int *seed) {
+static double get_jitter(const double mean_ms, const unsigned int jitter_percentage,
+                         unsigned int *seed) {
     int negative = rand_r(seed) % 2; // 0 or 1
 
     double jitter_range = mean_ms * (jitter_percentage / PERCENT);
-    double jitter = get_random_fraction(seed) * jitter_range;
-    
+    double jitter       = get_random_fraction(seed) * jitter_range;
+
     if (negative) {
         return -jitter;
     }
-    
+
     return jitter;
 }
 
 double get_service_ms(const route_info *route, unsigned int *seed) {
     double mean_ms = get_mean_ms(route, seed);
-    double jitter = get_jitter(mean_ms, route->jitter_pct, seed);
+    double jitter  = get_jitter(mean_ms, route->jitter_pct, seed);
     return mean_ms + jitter;
 }
 
 static void busy_wait(double ms) {
     uint64_t iterations = (uint64_t)(ms * ITERATIONS_PER_MS);
-    
+
     for (volatile uint64_t i = 0; i < iterations; i++) {
         // zzz
     }
@@ -59,10 +60,10 @@ static void busy_wait(double ms) {
 static int sleep_wait(double ms) {
     struct timespec ts;
 
-    time_t seconds = (time_t)(ms / 1000); // whole seconds, probably 0
-    long nanoseconds = (long)((ms - (seconds * 1000)) * NS_PER_MS); // remaining nanoseconds
-    ts.tv_sec = seconds;
-    ts.tv_nsec = nanoseconds;
+    time_t seconds     = (time_t)(ms / 1000);                         // whole seconds, probably 0
+    long   nanoseconds = (long)((ms - (seconds * 1000)) * NS_PER_MS); // remaining nanoseconds
+    ts.tv_sec          = seconds;
+    ts.tv_nsec         = nanoseconds;
 
     while (nanosleep(&ts, &ts)) {
         if (errno != EINTR) {
@@ -83,16 +84,16 @@ int service_route(const route_id id, unsigned int *seed) {
     double service_time_ms = get_service_ms(route, seed);
 
     switch (route->kind) {
-        case ROUTE_KIND_CPU:
-            busy_wait(service_time_ms);
-            break;
-        case ROUTE_KIND_SLEEP:
-            if (sleep_wait(service_time_ms) != SUCCESS) {
-                return ERROR;
-            }
-            break;
-        default:
+    case ROUTE_KIND_CPU:
+        busy_wait(service_time_ms);
+        break;
+    case ROUTE_KIND_SLEEP:
+        if (sleep_wait(service_time_ms) != SUCCESS) {
             return ERROR;
+        }
+        break;
+    default:
+        return ERROR;
     }
 
     return SUCCESS;

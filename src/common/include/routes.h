@@ -23,12 +23,12 @@ typedef struct {
     const char *path;
     route_kind  kind;
     // typical service time, in ms
-    unsigned    mean_ms;
+    unsigned mean_ms;
     // +/- variation, as a percentage of the chosen mean
-    unsigned    jitter_pct;
+    unsigned jitter_pct;
     // chance (0 to 100) that a request uses long_mean_ms instead of mean_ms
-    unsigned    long_pct;
-    unsigned    long_mean_ms;
+    unsigned long_pct;
+    unsigned long_mean_ms;
 } route_info;
 
 /**

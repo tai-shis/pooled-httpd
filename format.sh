@@ -6,7 +6,7 @@
 # Build output (bin/) is skipped, and third_party/ is outside src/, so Unity is never touched.
 set -euo pipefail
 
-repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/." && pwd)"
 cd "$repo_root"
 
 find src -path '*/bin' -prune -o \( -name '*.c' -o -name '*.h' \) -print0 |

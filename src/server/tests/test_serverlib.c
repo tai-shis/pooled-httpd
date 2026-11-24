@@ -48,9 +48,9 @@ void tearDown(void) {
 
 void test_get_service_ms_average(void) {
     for (route_id id = 0; id < ROUTE_COUNT; id++) {
-        const route_info *route = route_get(id);
-        unsigned int seed       = TEST_SEED;
-        double total_ms         = 0.0;
+        const route_info *route    = route_get(id);
+        unsigned int      seed     = TEST_SEED;
+        double            total_ms = 0.0;
 
         for (int i = 0; i < SAMPLE_COUNT; i++) {
             total_ms += get_service_ms(route, &seed);
@@ -63,8 +63,8 @@ void test_get_service_ms_average(void) {
 }
 
 void test_get_service_ms_range(void) {
-    route_info route  = make_test_route(10, 0);
-    unsigned int seed = TEST_SEED;
+    route_info   route = make_test_route(10, 0);
+    unsigned int seed  = TEST_SEED;
 
     for (int i = 0; i < SAMPLE_COUNT; i++) {
         double service_ms = get_service_ms(&route, &seed);
@@ -75,7 +75,7 @@ void test_get_service_ms_range(void) {
 }
 
 void test_get_service_ms_same_seed(void) {
-    route_info route    = make_test_route(10, 10);
+    route_info   route  = make_test_route(10, 10);
     unsigned int seed_a = TEST_SEED;
     unsigned int seed_b = TEST_SEED;
 
@@ -89,10 +89,10 @@ void test_get_service_ms_same_seed(void) {
 }
 
 void test_get_service_ms_consecutive(void) {
-    route_info route  = make_test_route(10, 0);
-    unsigned int seed = TEST_SEED;
-    double first_ms   = get_service_ms(&route, &seed);
-    int changed_count = 0;
+    route_info   route         = make_test_route(10, 0);
+    unsigned int seed          = TEST_SEED;
+    double       first_ms      = get_service_ms(&route, &seed);
+    int          changed_count = 0;
 
     for (int i = 0; i < SEQUENCE_LENGTH; i++) {
         if (get_service_ms(&route, &seed) != first_ms) {
@@ -103,8 +103,8 @@ void test_get_service_ms_consecutive(void) {
 }
 
 void test_get_service_ms_no_jitter(void) {
-    route_info route  = make_test_route(0, 0);
-    unsigned int seed = TEST_SEED;
+    route_info   route = make_test_route(0, 0);
+    unsigned int seed  = TEST_SEED;
 
     for (int i = 0; i < SEQUENCE_LENGTH; i++) {
         TEST_ASSERT_EQUAL_FLOAT(100.0, get_service_ms(&route, &seed));
@@ -112,23 +112,23 @@ void test_get_service_ms_no_jitter(void) {
 }
 
 void test_get_service_ms_long_pct_10(void) {
-    route_info route  = make_test_route(0, 10);
-    unsigned int seed = TEST_SEED;
+    route_info   route = make_test_route(0, 10);
+    unsigned int seed  = TEST_SEED;
 
     // 8% to 12% of samples
     TEST_ASSERT_INT_WITHIN(SAMPLE_COUNT / 50, SAMPLE_COUNT / 10, count_long_samples(&route, &seed));
 }
 
 void test_get_service_ms_long_pct_0(void) {
-    route_info route  = make_test_route(0, 0);
-    unsigned int seed = TEST_SEED;
+    route_info   route = make_test_route(0, 0);
+    unsigned int seed  = TEST_SEED;
 
     TEST_ASSERT_EQUAL_INT(0, count_long_samples(&route, &seed));
 }
 
 void test_get_service_ms_long_pct_100(void) {
-    route_info route  = make_test_route(0, 100);
-    unsigned int seed = TEST_SEED;
+    route_info   route = make_test_route(0, 100);
+    unsigned int seed  = TEST_SEED;
 
     TEST_ASSERT_EQUAL_INT(SAMPLE_COUNT, count_long_samples(&route, &seed));
 }

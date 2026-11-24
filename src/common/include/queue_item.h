@@ -6,12 +6,12 @@
 
 typedef struct {
     // accpted client socket
-    int             fd;            
-    route_id        route;
+    int      fd;
+    route_id route;
     // CLOCK_MONOTONIC, set by push
-    struct timespec enqueue_time;  
+    struct timespec enqueue_time;
     // priority policy only; FIFO ignores it
-    int             priority;  
+    int priority;
 } queue_item;
 
 #endif
