@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include "include/config.h"
 #include "../constants.h"
+#include "include/errprint.h"
 
 int main(int argc, char *argv[]) {
     if (argc < 1) {
@@ -12,7 +13,7 @@ int main(int argc, char *argv[]) {
     config cfg;
     int status = config_parse(&cfg, argc, argv);
     if (status != SUCCESS) {
-        fprintf(stderr, "Error: %d\n", status);
+        printerr(status);
         exit(EXIT_FAILURE);
     }
 

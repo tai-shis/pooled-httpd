@@ -160,12 +160,6 @@ static void set_config_defaults(config *cfg) {
 
 int config_parse(config *cfg, int argc, char **argv) {
     set_config_defaults(cfg);
-    
-    /**
-     * NOTE: TESTING ONLY. REMOVE
-     */
-    print_config(cfg, stderr);
-    //
 
     static const struct option options[] = {
         {"model",       required_argument, 0, 'm'},
