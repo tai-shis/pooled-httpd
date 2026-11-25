@@ -49,7 +49,6 @@ queue *initialize_queue(queue_policy policy, size_t capacity) {
     queue *q = malloc(sizeof(queue));
 
     if (q == NULL) {
-        errno = ENOMEM;
         return NULL;
     }
 
@@ -57,7 +56,6 @@ queue *initialize_queue(queue_policy policy, size_t capacity) {
 
     if (q->items == NULL) {
         free(q);
-        errno = ENOMEM;
         return NULL;
     }
 
