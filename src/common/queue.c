@@ -18,21 +18,21 @@ static int valid_policy(queue_policy policy) {
 
 static int initialize_queue_semaphores(queue *q) {
     if (sem_init(&q->mutex, 0, 1) == ERROR) {
-        return -1;
+        return ERROR;
     }
 
     if (sem_init(&q->empty_slots, 0, (unsigned int)q->capacity) == ERROR) {
         sem_destroy(&q->mutex);
-        return -1;
+        return ERROR;
     }
 
     if (sem_init(&q->full_slots, 0, 0) == ERROR) {
         sem_destroy(&q->empty_slots);
         sem_destroy(&q->mutex);
-        return -1;
+        return ERROR;
     }
 
-    return 0;
+    return SUCCESS;
 }
 
 queue *initialize_queue(queue_policy policy, size_t capacity) {
