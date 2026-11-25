@@ -24,8 +24,6 @@ static int parse_double(const char *str, double low, double high, double *out_nu
     char *end;
     errno = 0;
     double value = strtod(str, &end);
-    // accuracy to 5 sig digs should be enough to get an accurate reading; adjust as required
-    double precision = 1e-5; 
     if (*end != '\0' || errno == ERANGE || end == str || !(value >= low && value <= high)) {
         return ERROR;
     }
@@ -121,14 +119,15 @@ static int set_config_options(int argc, char **argv, config *cfg, const struct o
                 cfg->quiet = 1;
                 break;
             default:
-                // Something else happened that we can't really account for here
-                return ERROR;
+                // Junk input, invalid flags
+                return MALFORMED_ARGS;
         }
     }
 
     if (optind < argc) {
         return MALFORMED_ARGS;
     }
+
     return SUCCESS;
 }
 
