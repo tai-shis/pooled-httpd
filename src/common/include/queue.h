@@ -4,6 +4,7 @@
 #include "queue_item.h"
 
 #include <semaphore.h>
+#include <stdbool.h>
 
 typedef struct queue queue;
 
@@ -33,15 +34,16 @@ struct queue {
 
 /**
  * @brief Initializes a queue with the given policy and capacity
- * @param policy The policy to use for the queue
- * @param capacity The maximum number of items the queue can hold
- * @return A pointer to the initialized queue, or NULL if initialization fails
+ * @param policy The policy to use for the queue (QUEUE_FIFO or QUEUE_PRIORITY)
+ * @param capacity The maximum number of items the queue can hold (must be > 0 and <= SEM_VALUE_MAX)
+ * @return A pointer to the initialized queue, or NULL if initialization fails, setting errno to
+ * EINVAL
  */
 queue *initialize_queue(queue_policy policy, size_t capacity);
 
 /**
  * @brief Frees the memory allocated as well as the semaphores used by the queue
- * Call only after shutdown_queue() has been called and all threads are awake/alive
+ * Call only after shutdown_queue() has been called and all threads have joined
  * to avoid destroying a semaphore that a thread is waiting on.
  *
  * @param q The queue to free
@@ -51,6 +53,6 @@ void free_queue(queue *q);
 queue_status queue_push(queue *q, queue_item item);     /* blocks */
 queue_status queue_try_push(queue *q, queue_item item); /* non-blocking */
 queue_status queue_pop(queue *q, queue_item *out);      /* blocks until item or shutdown */
-void         shutdown_queue(queue *q);                  /* wakes all blocked pushers/poppers */
+bool         shutdown_queue(queue *q);                  /* wakes all blocked pushers/poppers */
 
 #endif

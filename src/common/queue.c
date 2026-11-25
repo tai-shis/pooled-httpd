@@ -1,9 +1,9 @@
 #include "queue.h"
 #include "constants.h"
+#include "queue_fifo.h"
 
 #include <stdlib.h>
 #include <errno.h>
-#include <stdbool.h>
 #include <limits.h>
 
 static int insert_item(queue *q, queue_item item) {
@@ -90,4 +90,4 @@ void free_queue(queue *q) {
 queue_status queue_push(queue *q, queue_item item);
 queue_status queue_try_push(queue *q, queue_item item);
 queue_status queue_pop(queue *q, queue_item *out);
-void         shutdown_queue(queue *q);
+bool         shutdown_queue(queue *q);
