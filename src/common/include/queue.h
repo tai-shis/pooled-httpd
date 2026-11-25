@@ -69,7 +69,19 @@ queue_status queue_push(queue *q, queue_item item); /* blocks */
  */
 queue_status queue_try_push(queue *q, queue_item item); /* non-blocking */
 
+/**
+ * @brief Pops an item from the queue, blocking if the queue is empty
+ * @param q The queue to pop from
+ * @param out The location to store the popped item
+ *
+ * @return QUEUE_OK on success, QUEUE_SHUTDOWN if the queue is shut down and empty
+ */
 queue_status queue_pop(queue *q, queue_item *out); /* blocks until item or shutdown */
-void         shutdown_queue(queue *q);             /* wakes all blocked pushers/poppers */
+
+/**
+ * @brief Shuts down the queue, waking all blocked pushers and poppers
+ * @param q The queue to shut down
+ */
+void shutdown_queue(queue *q); /* wakes all blocked pushers/poppers */
 
 #endif

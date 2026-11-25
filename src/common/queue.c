@@ -180,4 +180,15 @@ queue_status queue_pop(queue *q, queue_item *out) {
     return QUEUE_SHUTDOWN;
 }
 
-void shutdown_queue(queue *q);
+void shutdown_queue(queue *q) {
+    if (q == NULL) {
+        return;
+    }
+
+    wait_semaphore(&q->mutex);
+    q->shutdown = true;
+    post_semaphore(&q->mutex);
+
+    post_semaphore(&q->empty_slots);
+    post_semaphore(&q->full_slots);
+}
