@@ -94,9 +94,6 @@ static void insert_item(queue *q, queue_item item) {
     }
 }
 
-static void remove_item(queue *q, queue_item *out) {
-}
-
 queue_status queue_push(queue *q, queue_item item) {
     if (q == NULL) {
         return QUEUE_SHUTDOWN;
@@ -151,5 +148,36 @@ queue_status queue_try_push(queue *q, queue_item item) {
     return QUEUE_OK;
 }
 
-queue_status queue_pop(queue *q, queue_item *out);
-void         shutdown_queue(queue *q);
+static void remove_item(queue *q, queue_item *out) {
+    switch (q->policy) {
+    case QUEUE_FIFO:
+        remove_item_fifo(q, out);
+        break;
+    case QUEUE_PRIORITY:
+        break;
+    default:
+        break;
+    }
+}
+
+queue_status queue_pop(queue *q, queue_item *out) {
+    if (q == NULL) {
+        return QUEUE_SHUTDOWN;
+    }
+
+    wait_semaphore(&q->full_slots);
+    wait_semaphore(&q->mutex);
+
+    if (q->count > 0) {
+        remove_item(q, out);
+        post_semaphore(&q->mutex);
+        post_semaphore(&q->empty_slots);
+        return QUEUE_OK;
+    }
+
+    post_semaphore(&q->mutex);
+    post_semaphore(&q->full_slots); // to wake back up other poppers
+    return QUEUE_SHUTDOWN;
+}
+
+void shutdown_queue(queue *q);
