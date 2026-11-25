@@ -1,16 +1,11 @@
 #include "queue.h"
 #include "constants.h"
 #include "queue_fifo.h"
+#include "commonlib.h"
 
 #include <stdlib.h>
 #include <errno.h>
 #include <limits.h>
-
-static int insert_item(queue *q, queue_item item) {
-}
-
-static int remove_item(queue *q, queue_item *out) {
-}
 
 static int valid_policy(queue_policy policy) {
     return policy == QUEUE_FIFO || policy == QUEUE_PRIORITY;
@@ -87,7 +82,74 @@ void free_queue(queue *q) {
     free(q);
 }
 
-queue_status queue_push(queue *q, queue_item item);
-queue_status queue_try_push(queue *q, queue_item item);
+static void insert_item(queue *q, queue_item item) {
+    switch (q->policy) {
+    case QUEUE_FIFO:
+        insert_item_fifo(q, item);
+        break;
+    case QUEUE_PRIORITY:
+        break;
+    default:
+        break;
+    }
+}
+
+static void remove_item(queue *q, queue_item *out) {
+}
+
+queue_status queue_push(queue *q, queue_item item) {
+    if (q == NULL) {
+        return QUEUE_SHUTDOWN;
+    }
+
+    wait_semaphore(&q->empty_slots);
+
+    clock_gettime(CLOCK_MONOTONIC, &item.enqueue_time);
+
+    wait_semaphore(&q->mutex);
+    if (q->shutdown) {
+        post_semaphore(&q->mutex);
+        post_semaphore(&q->empty_slots);
+        return QUEUE_SHUTDOWN;
+    }
+
+    insert_item(q, item);
+
+    post_semaphore(&q->mutex);
+    post_semaphore(&q->full_slots);
+
+    return QUEUE_OK;
+}
+
+queue_status queue_try_push(queue *q, queue_item item) {
+    if (q == NULL) {
+        return QUEUE_SHUTDOWN;
+    }
+
+    while (sem_trywait(&q->empty_slots) == ERROR) {
+        if (errno == EAGAIN) {
+            return QUEUE_FULL;
+        } else if (errno != EINTR) {
+            return QUEUE_SHUTDOWN;
+        }
+    }
+
+    clock_gettime(CLOCK_MONOTONIC, &item.enqueue_time);
+
+    wait_semaphore(&q->mutex);
+    if (q->shutdown) {
+        post_semaphore(&q->mutex);
+        post_semaphore(&q->empty_slots);
+        return QUEUE_SHUTDOWN;
+    }
+
+    insert_item(q, item);
+
+    post_semaphore(&q->mutex);
+    post_semaphore(&q->full_slots);
+
+    return QUEUE_OK;
+}
+
 queue_status queue_pop(queue *q, queue_item *out);
-bool         shutdown_queue(queue *q);
+void         shutdown_queue(queue *q);

@@ -26,7 +26,7 @@ struct queue {
     size_t       head;     // FIFO ONLY, protected by mutex
     size_t       tail;     // FIFO ONLY, protected by mutex
     size_t       count;    // protected by mutex
-    int          shutdown; // protected by mutex
+    bool         shutdown; // protected by mutex
     sem_t        mutex;
     sem_t        empty_slots;
     sem_t        full_slots;
@@ -50,9 +50,26 @@ queue *initialize_queue(queue_policy policy, size_t capacity);
  */
 void free_queue(queue *q);
 
-queue_status queue_push(queue *q, queue_item item);     /* blocks */
+/**
+ * @brief Pushes an item onto the queue, blocking if the queue is full
+ * @param q The queue to push onto
+ * @param item The item to push onto the queue
+ *
+ * @return QUEUE_OK on success, QUEUE_SHUTDOWN if the queue is shut down
+ */
+queue_status queue_push(queue *q, queue_item item); /* blocks */
+
+/**
+ * @brief Tries to push an item onto the queue, returning immediately if the queue is full
+ * @param q The queue to push onto
+ * @param item The item to push onto the queue
+ *
+ * @return QUEUE_OK on success, QUEUE_FULL if the queue is full, QUEUE_SHUTDOWN if the queue is shut
+ * down
+ */
 queue_status queue_try_push(queue *q, queue_item item); /* non-blocking */
-queue_status queue_pop(queue *q, queue_item *out);      /* blocks until item or shutdown */
-bool         shutdown_queue(queue *q);                  /* wakes all blocked pushers/poppers */
+
+queue_status queue_pop(queue *q, queue_item *out); /* blocks until item or shutdown */
+void         shutdown_queue(queue *q);             /* wakes all blocked pushers/poppers */
 
 #endif
