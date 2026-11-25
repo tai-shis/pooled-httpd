@@ -75,7 +75,17 @@ queue *initialize_queue(queue_policy policy, size_t capacity) {
     return q;
 }
 
-void free_queue(queue *q);
+void free_queue(queue *q) {
+    if (q == NULL) {
+        return;
+    }
+
+    sem_destroy(&q->full_slots);
+    sem_destroy(&q->empty_slots);
+    sem_destroy(&q->mutex);
+    free(q->items);
+    free(q);
+}
 
 queue_status queue_push(queue *q, queue_item item);
 queue_status queue_try_push(queue *q, queue_item item);

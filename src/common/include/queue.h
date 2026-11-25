@@ -38,7 +38,15 @@ struct queue {
  * @return A pointer to the initialized queue, or NULL if initialization fails
  */
 queue *initialize_queue(queue_policy policy, size_t capacity);
-void   free_queue(queue *q);
+
+/**
+ * @brief Frees the memory allocated as well as the semaphores used by the queue
+ * Call only after shutdown_queue() has been called and all threads are awake/alive
+ * to avoid destroying a semaphore that a thread is waiting on.
+ *
+ * @param q The queue to free
+ */
+void free_queue(queue *q);
 
 queue_status queue_push(queue *q, queue_item item);     /* blocks */
 queue_status queue_try_push(queue *q, queue_item item); /* non-blocking */
