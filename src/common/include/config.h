@@ -15,10 +15,10 @@ typedef struct {
     server_model model;
 
     // loadgen info
-    const char  *host;
-    int          rps;
-    int          duration_s;
-    int          connections;
+    const char *host;
+    int         rps;
+    int         duration_s;
+    int         connections;
 
     // policy info
     double       alpha;
