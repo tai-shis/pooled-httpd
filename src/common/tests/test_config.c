@@ -19,11 +19,13 @@
 #include <math.h>
 
 /* Unity ignores double asserts unless built with UNITY_INCLUDE_DOUBLE, so compare by hand. */
-#define ASSERT_NEAR(expected, actual) \
+#define ASSERT_NEAR(expected, actual)                                                              \
     TEST_ASSERT_TRUE_MESSAGE(fabs((expected) - (actual)) < 1e-9, "double values differ")
 
-void setUp(void) {}
-void tearDown(void) {}
+void setUp(void) {
+}
+void tearDown(void) {
+}
 
 /* ------------------------------------------------------------------ */
 /* Helpers                                                            */
@@ -38,32 +40,31 @@ static int parse_args(config *cfg, int n, const char *const *args) {
     TEST_ASSERT_TRUE(n < 62);
     argv[0] = "server";
     for (int i = 0; i < n; i++) {
-        argv[i + 1] = (char *) args[i];
+        argv[i + 1] = (char *)args[i];
     }
     argv[n + 1] = NULL;
     return config_parse(cfg, n + 1, argv);
 }
 
-#define ARGS(...)  ((const char *const[]){__VA_ARGS__})
-#define NARGS(...) ((int) (sizeof(ARGS(__VA_ARGS__)) / sizeof(const char *)))
+#define ARGS(...) ((const char *const[]){__VA_ARGS__})
+#define NARGS(...) ((int)(sizeof(ARGS(__VA_ARGS__)) / sizeof(const char *)))
 #define PARSE(cfg, ...) parse_args((cfg), NARGS(__VA_ARGS__), ARGS(__VA_ARGS__))
 
 /* Parse and expect a specific error code. */
-#define EXPECT_ERR(code, ...)                                   \
-    do {                                                        \
-        config c_;                                              \
-        TEST_ASSERT_EQUAL_INT((code), PARSE(&c_, __VA_ARGS__)); \
+#define EXPECT_ERR(code, ...)                                                                      \
+    do {                                                                                           \
+        config c_;                                                                                 \
+        TEST_ASSERT_EQUAL_INT((code), PARSE(&c_, __VA_ARGS__));                                    \
     } while (0)
 
 /* Parse and expect success. */
-#define EXPECT_OK(cfgptr, ...) \
-    TEST_ASSERT_EQUAL_INT(SUCCESS, PARSE((cfgptr), __VA_ARGS__))
+#define EXPECT_OK(cfgptr, ...) TEST_ASSERT_EQUAL_INT(SUCCESS, PARSE((cfgptr), __VA_ARGS__))
 
 /* Number to string; a small ring of buffers so several calls can share one argv. */
 static const char *num(long v) {
     static char bufs[8][32];
-    static int next = 0;
-    char *b = bufs[next++ % 8];
+    static int  next = 0;
+    char       *b    = bufs[next++ % 8];
     snprintf(b, 32, "%ld", v);
     return b;
 }
@@ -71,7 +72,7 @@ static const char *num(long v) {
 static void assert_defaults(const config *cfg) {
     TEST_ASSERT_EQUAL_INT(8080, cfg->port);
     TEST_ASSERT_EQUAL_INT(4, cfg->num_threads);
-    TEST_ASSERT_EQUAL_UINT((unsigned) 64, (unsigned) cfg->queue_capacity);
+    TEST_ASSERT_EQUAL_UINT((unsigned)64, (unsigned)cfg->queue_capacity);
     TEST_ASSERT_EQUAL_INT(QUEUE_FIFO, cfg->policy);
     TEST_ASSERT_EQUAL_INT(MODEL_POOL, cfg->model);
     ASSERT_NEAR(0.5, cfg->alpha);
@@ -90,7 +91,7 @@ static void assert_defaults(const config *cfg) {
 
 void test_defaults_with_no_flags(void) {
     config cfg;
-    memset(&cfg, 0xAB, sizeof cfg);          /* junk in, defaults out */
+    memset(&cfg, 0xAB, sizeof cfg); /* junk in, defaults out */
     TEST_ASSERT_EQUAL_INT(SUCCESS, parse_args(&cfg, 0, NULL));
     assert_defaults(&cfg);
 }
@@ -100,7 +101,7 @@ void test_single_flag_leaves_other_fields_default(void) {
     EXPECT_OK(&cfg, "--threads", "8");
     TEST_ASSERT_EQUAL_INT(8, cfg.num_threads);
     TEST_ASSERT_EQUAL_INT(8080, cfg.port);
-    TEST_ASSERT_EQUAL_UINT((unsigned) 64, (unsigned) cfg.queue_capacity);
+    TEST_ASSERT_EQUAL_UINT((unsigned)64, (unsigned)cfg.queue_capacity);
     TEST_ASSERT_EQUAL_INT(QUEUE_FIFO, cfg.policy);
     TEST_ASSERT_EQUAL_INT(MODEL_POOL, cfg.model);
     TEST_ASSERT_EQUAL_INT(0, cfg.quiet);
@@ -136,7 +137,7 @@ void test_threads_flag(void) {
 void test_capacity_flag(void) {
     config cfg;
     EXPECT_OK(&cfg, "--capacity", "128");
-    TEST_ASSERT_EQUAL_UINT((unsigned) 128, (unsigned) cfg.queue_capacity);
+    TEST_ASSERT_EQUAL_UINT((unsigned)128, (unsigned)cfg.queue_capacity);
 }
 
 void test_port_flag(void) {
@@ -167,14 +168,14 @@ void test_receive_timeout_flag(void) {
     config cfg;
     EXPECT_OK(&cfg, "--receive", "1500");
     TEST_ASSERT_EQUAL_INT(1500, cfg.rcv_timeout_ms);
-    TEST_ASSERT_EQUAL_INT(5000, cfg.snd_timeout_ms);   /* untouched */
+    TEST_ASSERT_EQUAL_INT(5000, cfg.snd_timeout_ms); /* untouched */
 }
 
 void test_send_timeout_flag(void) {
     config cfg;
     EXPECT_OK(&cfg, "--send", "2500");
     TEST_ASSERT_EQUAL_INT(2500, cfg.snd_timeout_ms);
-    TEST_ASSERT_EQUAL_INT(5000, cfg.rcv_timeout_ms);   /* untouched */
+    TEST_ASSERT_EQUAL_INT(5000, cfg.rcv_timeout_ms); /* untouched */
 }
 
 void test_logpath_flag(void) {
@@ -199,15 +200,13 @@ void test_equals_syntax(void) {
 
 void test_all_flags_together(void) {
     config cfg;
-    EXPECT_OK(&cfg,
-              "--model", "tpr", "--policy", "priority", "--threads", "7",
-              "--capacity", "32", "--port", "5555", "--alpha", "0.9",
-              "--w", "2.5", "--seed", "99", "--receive", "100",
+    EXPECT_OK(&cfg, "--model", "tpr", "--policy", "priority", "--threads", "7", "--capacity", "32",
+              "--port", "5555", "--alpha", "0.9", "--w", "2.5", "--seed", "99", "--receive", "100",
               "--send", "200", "--logpath", "all.log", "--quiet");
     TEST_ASSERT_EQUAL_INT(MODEL_THREAD_PER_REQUEST, cfg.model);
     TEST_ASSERT_EQUAL_INT(QUEUE_PRIORITY, cfg.policy);
     TEST_ASSERT_EQUAL_INT(7, cfg.num_threads);
-    TEST_ASSERT_EQUAL_UINT((unsigned) 32, (unsigned) cfg.queue_capacity);
+    TEST_ASSERT_EQUAL_UINT((unsigned)32, (unsigned)cfg.queue_capacity);
     TEST_ASSERT_EQUAL_INT(5555, cfg.port);
     ASSERT_NEAR(0.9, cfg.alpha);
     ASSERT_NEAR(2.5, cfg.w);
@@ -242,9 +241,9 @@ void test_threads_boundaries_accepted(void) {
 void test_capacity_boundaries_accepted(void) {
     config cfg;
     EXPECT_OK(&cfg, "--capacity", "1");
-    TEST_ASSERT_EQUAL_UINT(1u, (unsigned) cfg.queue_capacity);
+    TEST_ASSERT_EQUAL_UINT(1u, (unsigned)cfg.queue_capacity);
     EXPECT_OK(&cfg, "--capacity", num(MAX_QUEUE));
-    TEST_ASSERT_EQUAL_UINT((unsigned) MAX_QUEUE, (unsigned) cfg.queue_capacity);
+    TEST_ASSERT_EQUAL_UINT((unsigned)MAX_QUEUE, (unsigned)cfg.queue_capacity);
 }
 
 void test_port_boundaries_accepted(void) {
@@ -267,7 +266,7 @@ void test_alpha_boundaries_accepted(void) {
 
 void test_w_boundaries_accepted(void) {
     config cfg;
-    EXPECT_OK(&cfg, "--w", "0");        /* w = 0 is FIFO behaviour: a useful control */
+    EXPECT_OK(&cfg, "--w", "0"); /* w = 0 is FIFO behaviour: a useful control */
     ASSERT_NEAR(0.0, cfg.w);
     EXPECT_OK(&cfg, "--w", "10");
     ASSERT_NEAR(10.0, cfg.w);
@@ -278,7 +277,7 @@ void test_seed_boundaries_accepted(void) {
     EXPECT_OK(&cfg, "--seed", "0");
     TEST_ASSERT_EQUAL_UINT(0u, cfg.seed);
     EXPECT_OK(&cfg, "--seed", num(INT_MAX));
-    TEST_ASSERT_EQUAL_UINT((unsigned) INT_MAX, cfg.seed);
+    TEST_ASSERT_EQUAL_UINT((unsigned)INT_MAX, cfg.seed);
 }
 
 void test_timeout_boundaries_accepted(void) {
@@ -294,7 +293,7 @@ void test_timeout_boundaries_accepted(void) {
 void test_logpath_length_boundary_accepted(void) {
     static char path[PATH_MAX];
     memset(path, 'a', PATH_MAX - 1);
-    path[PATH_MAX - 1] = '\0';              /* length PATH_MAX - 1 */
+    path[PATH_MAX - 1] = '\0'; /* length PATH_MAX - 1 */
     config cfg;
     EXPECT_OK(&cfg, "--logpath", path);
     TEST_ASSERT_EQUAL_STRING(path, cfg.log_path);
@@ -307,8 +306,8 @@ void test_logpath_length_boundary_accepted(void) {
 void test_invalid_model_rejected(void) {
     EXPECT_ERR(INVALID_MODEL_TYPE, "--model", "bogus");
     EXPECT_ERR(INVALID_MODEL_TYPE, "--model", "");
-    EXPECT_ERR(INVALID_MODEL_TYPE, "--model", "POOL");          /* case-sensitive */
-    EXPECT_ERR(INVALID_MODEL_TYPE, "--model", "pool ");         /* trailing space */
+    EXPECT_ERR(INVALID_MODEL_TYPE, "--model", "POOL");  /* case-sensitive */
+    EXPECT_ERR(INVALID_MODEL_TYPE, "--model", "pool "); /* trailing space */
     EXPECT_ERR(INVALID_MODEL_TYPE, "--model", "thread-per-request");
 }
 
@@ -320,8 +319,8 @@ void test_invalid_policy_rejected(void) {
 }
 
 void test_threads_out_of_range_rejected(void) {
-    EXPECT_ERR(THREAD_NUM_OOB, "--threads", num((long) MIN_THREADS - 1));
-    EXPECT_ERR(THREAD_NUM_OOB, "--threads", num((long) MAX_THREADS + 1));
+    EXPECT_ERR(THREAD_NUM_OOB, "--threads", num((long)MIN_THREADS - 1));
+    EXPECT_ERR(THREAD_NUM_OOB, "--threads", num((long)MAX_THREADS + 1));
     EXPECT_ERR(THREAD_NUM_OOB, "--threads", "-1");
     EXPECT_ERR(THREAD_NUM_OOB, "--threads", "0");
 }
@@ -330,17 +329,17 @@ void test_threads_not_a_number_rejected(void) {
     EXPECT_ERR(THREAD_NUM_OOB, "--threads", "abc");
     EXPECT_ERR(THREAD_NUM_OOB, "--threads", "");
     EXPECT_ERR(THREAD_NUM_OOB, "--threads", " ");
-    EXPECT_ERR(THREAD_NUM_OOB, "--threads", "4x");              /* trailing junk */
+    EXPECT_ERR(THREAD_NUM_OOB, "--threads", "4x"); /* trailing junk */
     EXPECT_ERR(THREAD_NUM_OOB, "--threads", "x4");
     EXPECT_ERR(THREAD_NUM_OOB, "--threads", "4.5");
     EXPECT_ERR(THREAD_NUM_OOB, "--threads", "4 4");
-    EXPECT_ERR(THREAD_NUM_OOB, "--threads", "99999999999999999999");   /* ERANGE */
+    EXPECT_ERR(THREAD_NUM_OOB, "--threads", "99999999999999999999"); /* ERANGE */
 }
 
 void test_capacity_rejected(void) {
     EXPECT_ERR(QUEUE_CAP_OOB, "--capacity", "0");
     EXPECT_ERR(QUEUE_CAP_OOB, "--capacity", "-5");
-    EXPECT_ERR(QUEUE_CAP_OOB, "--capacity", num((long) MAX_QUEUE + 1));
+    EXPECT_ERR(QUEUE_CAP_OOB, "--capacity", num((long)MAX_QUEUE + 1));
     EXPECT_ERR(QUEUE_CAP_OOB, "--capacity", "abc");
     EXPECT_ERR(QUEUE_CAP_OOB, "--capacity", "");
     EXPECT_ERR(QUEUE_CAP_OOB, "--capacity", "10k");
@@ -348,7 +347,7 @@ void test_capacity_rejected(void) {
 
 void test_port_rejected(void) {
     EXPECT_ERR(PORT_RANGE_OOB, "--port", "0");
-    EXPECT_ERR(PORT_RANGE_OOB, "--port", "1023");               /* privileged port */
+    EXPECT_ERR(PORT_RANGE_OOB, "--port", "1023"); /* privileged port */
     EXPECT_ERR(PORT_RANGE_OOB, "--port", "65536");
     EXPECT_ERR(PORT_RANGE_OOB, "--port", "-1");
     EXPECT_ERR(PORT_RANGE_OOB, "--port", "http");
@@ -363,10 +362,10 @@ void test_alpha_rejected(void) {
     EXPECT_ERR(ALPHA_VAL_OOB, "--alpha", "abc");
     EXPECT_ERR(ALPHA_VAL_OOB, "--alpha", "");
     EXPECT_ERR(ALPHA_VAL_OOB, "--alpha", "0.5x");
-    EXPECT_ERR(ALPHA_VAL_OOB, "--alpha", "nan");                /* NaN passes naive < > checks */
+    EXPECT_ERR(ALPHA_VAL_OOB, "--alpha", "nan"); /* NaN passes naive < > checks */
     EXPECT_ERR(ALPHA_VAL_OOB, "--alpha", "inf");
     EXPECT_ERR(ALPHA_VAL_OOB, "--alpha", "-inf");
-    EXPECT_ERR(ALPHA_VAL_OOB, "--alpha", "1e400");              /* ERANGE */
+    EXPECT_ERR(ALPHA_VAL_OOB, "--alpha", "1e400"); /* ERANGE */
 }
 
 void test_w_rejected(void) {
@@ -381,7 +380,7 @@ void test_w_rejected(void) {
 
 void test_seed_rejected(void) {
     EXPECT_ERR(SEED_VAL_OOB, "--seed", "-1");
-    EXPECT_ERR(SEED_VAL_OOB, "--seed", num((long) INT_MAX + 1));
+    EXPECT_ERR(SEED_VAL_OOB, "--seed", num((long)INT_MAX + 1));
     EXPECT_ERR(SEED_VAL_OOB, "--seed", "abc");
     EXPECT_ERR(SEED_VAL_OOB, "--seed", "");
     EXPECT_ERR(SEED_VAL_OOB, "--seed", "1.5");
@@ -389,16 +388,16 @@ void test_seed_rejected(void) {
 }
 
 void test_receive_timeout_rejected(void) {
-    EXPECT_ERR(RCV_WAIT_OOB, "--receive", num((long) MIN_WAIT - 1));
-    EXPECT_ERR(RCV_WAIT_OOB, "--receive", num((long) MAX_WAIT + 1));
+    EXPECT_ERR(RCV_WAIT_OOB, "--receive", num((long)MIN_WAIT - 1));
+    EXPECT_ERR(RCV_WAIT_OOB, "--receive", num((long)MAX_WAIT + 1));
     EXPECT_ERR(RCV_WAIT_OOB, "--receive", "abc");
     EXPECT_ERR(RCV_WAIT_OOB, "--receive", "");
     EXPECT_ERR(RCV_WAIT_OOB, "--receive", "5s");
 }
 
 void test_send_timeout_rejected(void) {
-    EXPECT_ERR(SND_WAIT_OOB, "--send", num((long) MIN_WAIT - 1));
-    EXPECT_ERR(SND_WAIT_OOB, "--send", num((long) MAX_WAIT + 1));
+    EXPECT_ERR(SND_WAIT_OOB, "--send", num((long)MIN_WAIT - 1));
+    EXPECT_ERR(SND_WAIT_OOB, "--send", num((long)MAX_WAIT + 1));
     EXPECT_ERR(SND_WAIT_OOB, "--send", "abc");
     EXPECT_ERR(SND_WAIT_OOB, "--send", "");
     EXPECT_ERR(SND_WAIT_OOB, "--send", "5s");
@@ -407,18 +406,18 @@ void test_send_timeout_rejected(void) {
 void test_logpath_too_long_rejected(void) {
     static char path[PATH_MAX + 1];
     memset(path, 'a', PATH_MAX);
-    path[PATH_MAX] = '\0';                  /* length PATH_MAX: too long */
+    path[PATH_MAX] = '\0'; /* length PATH_MAX: too long */
     EXPECT_ERR(LOGPATH_TOO_LONG, "--logpath", path);
 }
 
 void test_unknown_flag_rejected(void) {
     EXPECT_ERR(MALFORMED_ARGS, "--bogus");
     EXPECT_ERR(MALFORMED_ARGS, "--bogus", "1");
-    EXPECT_ERR(MALFORMED_ARGS, "--threads", "4", "--bogus");             /* valid flag, then unknown */
+    EXPECT_ERR(MALFORMED_ARGS, "--threads", "4", "--bogus"); /* valid flag, then unknown */
 }
 
 void test_missing_value_rejected(void) {
-    EXPECT_ERR(MALFORMED_ARGS, "--threads");                             /* nothing after the flag */
+    EXPECT_ERR(MALFORMED_ARGS, "--threads"); /* nothing after the flag */
     EXPECT_ERR(MALFORMED_ARGS, "--policy");
     EXPECT_ERR(MALFORMED_ARGS, "--alpha");
     EXPECT_ERR(MALFORMED_ARGS, "--logpath");
@@ -427,8 +426,8 @@ void test_missing_value_rejected(void) {
 void test_leftover_positional_args_rejected(void) {
     EXPECT_ERR(MALFORMED_ARGS, "pool");
     EXPECT_ERR(MALFORMED_ARGS, "--quiet", "extra");
-    EXPECT_ERR(MALFORMED_ARGS, "--threads", "4", "8");          /* stray second number */
-    EXPECT_ERR(MALFORMED_ARGS, "extra", "--quiet");             /* getopt permutes; still leftover */
+    EXPECT_ERR(MALFORMED_ARGS, "--threads", "4", "8"); /* stray second number */
+    EXPECT_ERR(MALFORMED_ARGS, "extra", "--quiet");    /* getopt permutes; still leftover */
 }
 
 /* ------------------------------------------------------------------ */
@@ -485,6 +484,6 @@ int main(void) {
     RUN_TEST(test_unknown_flag_rejected);
     RUN_TEST(test_missing_value_rejected);
     RUN_TEST(test_leftover_positional_args_rejected);
-    
+
     return UNITY_END();
 }
