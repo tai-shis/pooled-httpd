@@ -27,3 +27,18 @@ One row per test. Each ticket's author adds rows as their tests land.
 | `test_unknown_flag_rejected` | Junk flags are rejected and result in errors returned | `--bogus`, `--bogus 1`, `--threads 4 --bogus` | `MALFORMED_ARGS` | PASS |
 | `test_unknown_flag_rejected` | Missing values on valid flags are rejected as malformed | `--threads`, `--policy`, `--alpha`, `--logpath` | `MALFORMED_ARGS` | PASS | 
 | `test_leftover_positional_args_rejected` | Leftover / extras on command line are rejected | `pool`, `--quiet extra`, `--threads 4 8`, `extra --quiet` | `MALFORMED_ARGS` | PASS | 
+| `test_queue_pop_order` | Items pop in the order they were pushed | Capacity 3; push ids 0, 1, 2 | Pops return 0, 1, 2 | PASS |
+| `test_queue_push_wraparound` | `head` and `tail` wrap past the end of the ring buffer | Capacity 3; 10 items, pushing one after each pop | Pops return 0 to 9 in order | PASS |
+| `test_queue_push_blocks_when_full` | `queue_push()` blocks on a full queue until a slot frees | Capacity 2, full; a thread pushes 99, then main waits 100ms and pops once | Push has not returned after 100ms; then returns `QUEUE_OK`, and 99 pops last | PASS |
+| `test_queue_pop_blocks_when_empty` | `queue_pop()` blocks on an empty queue until an item arrives | Capacity 2, empty; a thread pops, then main waits 100ms and pushes 42 | Pop has not returned after 100ms; then returns `QUEUE_OK` with 42 | PASS |
+| `test_queue_spmc_exactly_once` | 1 producer and many consumers lose and duplicate nothing | Capacity 2; 1 producer pushes 10,000 ids; 2 × cores consumers (min 4) | Every id popped exactly once; each consumer's ids in increasing order | PASS |
+| `test_shutdown_queue_wakes_poppers` | `shutdown_queue()` wakes every blocked popper | Empty queue; 2 × cores poppers blocked, then shutdown | Every pop returns `QUEUE_SHUTDOWN` | PASS |
+| `test_queue_pop_drain` | Items left at shutdown are still popped | Capacity 3, full; shutdown; 4 pops | First 3 pops return 0, 1, 2; 4th returns `QUEUE_SHUTDOWN` | PASS |
+| `test_shutdown_queue_wakes_pusher` | `shutdown_queue()` wakes a pusher blocked on a full queue | Capacity 2, full; a thread pushes 99, then shutdown | Push returns `QUEUE_SHUTDOWN` | PASS |
+| `test_queue_pop_after_drained` | Pops after the queue is drained return at once | Empty queue; shutdown; 3 pops | Every pop returns `QUEUE_SHUTDOWN` without blocking | PASS |
+| `test_shutdown_queue_rejected_pusher_keeps_items` | A pusher rejected at shutdown leaves queued items in place | Capacity 2, full; a thread pushes 99, then shutdown; 3 pops | Push returns `QUEUE_SHUTDOWN`; pops return 0, 1, then `QUEUE_SHUTDOWN` | PASS |
+| `test_queue_try_push_full` | `queue_try_push()` rejects on a full queue without changing it | Capacity 2, full; try_push 99; shutdown; 3 pops | try_push returns `QUEUE_FULL`; pops return 0, 1, then `QUEUE_SHUTDOWN` | PASS |
+| `test_queue_push_after_shutdown` | Pushes after shutdown are rejected | Capacity 3, empty; shutdown; push, try_push, pop | All three return `QUEUE_SHUTDOWN` | PASS |
+| `test_queue_capacity_one` | The smallest ring buffer wraps on every operation | Capacity 1; 10 rounds of push, try_push, pop | Each push returns `QUEUE_OK`, each try_push returns `QUEUE_FULL`, each pop returns the pushed id | PASS |
+| `test_queue_spmc_try_push` | Reject mode with 1 producer and many consumers | Capacity 2; 1 producer try_pushes 10,000 ids; 2 × cores consumers (min 4) | Every accepted id popped exactly once; no rejected id popped; each consumer's ids in increasing order | PASS |
+| `test_initialize_queue_rejects_invalid` | `initialize_queue()` rejects bad arguments | Capacity 0; capacity `SEM_VALUE_MAX + 1`; policy `99` | `NULL` with `errno` set to `EINVAL` for each | PASS |
