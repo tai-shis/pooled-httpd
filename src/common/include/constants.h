@@ -35,4 +35,9 @@
 #define LOGPATH_TOO_LONG -12  // config.c - Log Path Too Long
 #define MALFORMED_ARGS -13    // config.c - optind does not match argc, so there's a malformed input
 
+// LOGGING
+#define MAX_LOG_BUFFER 4096
+#define NO_FILE_LOGGING (-1)
+#define LOG_FILE_MODE 0644
+
 #endif
