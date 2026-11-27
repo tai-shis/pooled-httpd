@@ -20,7 +20,7 @@ We will compare the pooled thread approach to a request-by-thread approach, wher
 ## Memo Feedback
 | Feedback Point | Response |
 |----------------|----------|
-| **Project builds on course VM** | We will handle full project and module-specific builds through a `makefile` script. Each member of the group does use some kind of Linux distribution, so we do not anticipate any issues with compilation on the VM just as in Project #1. However, VM compilation will be periodically, likely once per week to be absolutely certain we are on track.|
+| **Project builds on course VM** | We will handle full project and module-specific builds through a `makefile` script. Each member of the group does use some kind of Linux distribution, so we do not anticipate any issues with compilation on the VM just as in Project #1. However, VM compilation will be done periodically, likely once per week to be absolutely certain we are on track.|
 | **Route behaviour** | We choose to implement both CPU-bound loop and sleep behaviour for routing. Given your suggestion, we want to compare the results of both of these behaviours. *More information outlined below*.  |
 | **Processes and IPC - Where fork, exec, pipe, dup2, waitpid are used** | Only in the C version of `./lab`. Core of the project uses the shell. *More information outlined below*.|
 | **Visualization**| C for `./view` and `./lab`. Python with `matplotlib` for the data plots|
@@ -29,16 +29,16 @@ We will compare the pooled thread approach to a request-by-thread approach, wher
 | **Division of work**| Just as in Project #1, we are using tickets to divide labour. Each group member communicates and assigns tickets to themselves based on their programming ability and/or desire to work on a given project function.<br>Obviously, not all tickets will have equal amounts of work, so we are not explicitly measuring "lines of code" or "number of tickets assigned" in any way.|
 
 ## Route Behaviour (CPU-bound & Sleeping Routes)
-Both route types have been chosen because we can run experiements to compare the two and show our results.\
+Both route types have been chosen because we can run experiments to compare the two and show our results.\
 - **CPU-bound routes** spin in a loop. Service time depends on how much demand for CPU time there is vs. how much is actually available (CPU contention). This is a measurable outcome and can be compared between service time and CPU time
-- **Sleeping routes** use `nanosleep` (such as waiting on a disk or database to return a request). A worker that is "sleeping" uses no CPU time, so other threads can take it's place, using CPU time it cannot make use of.
+- **Sleeping routes** use `nanosleep` (such as waiting on a disk or database to return a request). A worker that is "sleeping" uses no CPU time, so other threads can take its place, using CPU time it cannot make use of.
 - **Expected effect(s):** With CPU-bound routes, more threads cannot increase throughput, so the pool and thread-per-request are expected to perform similarly when load is **low**. This is because demand is not outpacing available resources. When load grows, thread-per-request is expected to suffer due to overhead of thread creation and context switching. With sleeping routes, threads overlap the waiting and should raise throughput until resource limits are reached.
 
 ### Single-core VM Consequences
 Due to the single-core limitation, running tasks in parallel is not an option. Threads will create an obvious overhead due to context switches, but no parallel speedup will be observed. The only gain we can make is through sleeping routes as the sleeping route is not allowed to take up CPU time if there is another thread waiting for CPU time. 
 
 ## Processes and IPC
-The core of the project will uses signals, pipes, sockets, but `fork()` and `execve()` are left to the shell.
+The core of the project uses signals, pipes, and sockets, but `fork()` and `execve()` are left to the shell.
 - Pipe: shell connects `./server` with `./view` -> `./server | ./view`
 - Sockets: load generator talks to the server over HTTP
 - Signals: SIGINT gracefully shuts the server down and SIGPIPE (invalid write to pipe when read end is closed) is ignored so we can handle it properly without shutting down the program instantly.
@@ -47,7 +47,7 @@ The core of the project will uses signals, pipes, sockets, but `fork()` and `exe
 Since `./lab` is an optional addition, the calls to things such as `pipe()` and `dup2()` will only appear if it is implemented. 
 
 ## Visualization
-We wil start with the `./view` and `./lab` module running the visualization in C. `ncurses` is a potential upgrade of the visualization (time permitting). Graphs are made from the CSV output in Python and **matplotlib**. We will confirm it is on the VM, and **gnuplot** is the backup if we cannot use it.  
+We will start with the `./view` and `./lab` module running the visualization in C. `ncurses` is a potential upgrade of the visualization (time permitting). Graphs are made from the CSV output in Python and **matplotlib**. We will confirm it is on the VM, and **gnuplot** is the backup if we cannot use it.  
 
 ## Division of Work
 Ticketing system on **Linear** is used just as in Project #1. The ticket author writes that ticket's tests and runs `make test` to ensure tests are passing before merging any code. Tickets follow a phase schedule.
@@ -99,33 +99,38 @@ The queue is the textbook bounded buffer with three semaphores: mutex (1), empty
 | ----- | ---- | ------------ | ------- |
 | `/fast` | CPU | ~1ms, +/- 10% | Experiment #2 and #3 |
 | `/slow` | CPU | ~50ms, +/- 10%|Experiment #2 and #3 |
-| `/bimodal` | CPU | 90% ~1ms, 10% ~100ms| Experiment #3 (predictor failure) |
-| `/drift` | CPU | mean shifts mid-run | Experiment #3 (alpha sweep) |
-| `/api` | Sleep | ~20ms | Experiment #2 (sleep-heavy) |
+| `/bimodal` | CPU | 90% ~1ms, 10% ~100ms| Experiment #3 (predictor failure, alpha sweep) |
+| `/api` | Sleep | ~20ms, +/- 10% | Experiment #2 (sleep-heavy) |
 | `/db` | Sleep | ~10ms, +/- 50%  | none yet  |
 ### Routes (synthetic)
-CPU routes spin through a calibrated amount of work, so CPU contention shows up as latency. Sleep routes use nanosleep (blocked, no CPU) to simulate network calls. Variance comes from a seeded per-thread RNG.
+The service times in the table are rough targets, not exact values.
+
+- **CPU routes** busy-loop for a fixed number of iterations: the chosen service time multiplied by `ITERATIONS_PER_MS`, so CPU contention shows up as latency. `ITERATIONS_PER_MS` is a rough constant, tuned by hand on the course VM with the release build. The debug and TSan builds run the same loop more slowly, so experiments always use the release build.
+- **Sleep routes** use `nanosleep` (blocked, no CPU) to simulate network calls. An interrupted sleep (`EINTR`) is retried with the time remaining.
+- **Service time per request:** the route's mean plus uniform jitter of up to +/-`jitter_pct`% of that mean. `/bimodal` first picks its long mean (~100ms) on `long_pct`% of requests, and its short mean otherwise.
+- **Variance** comes from `rand_r()`, with each worker passing its own state seeded from the config seed. The same seed gives the same run, and no RNG state is shared between threads.
+- **Code:** the route table (ids, paths, kinds, and timing) is in `src/common/routes.c`. Picking a service time (`get_service_ms()`) and running a route (`service_route()`) are in `src/server/serverlib.c`.
 
 ### Robustness
-• HTTP parsing: request line only; read until \r\n\r\n is complete, handling split reads. Respond 400 for malformed requests, 404 for unknown routes, 405 for the wrong method.
-• Socket timeouts: SO_RCVTIMEO and SO_SNDTIMEO, so a silent client cannot hold a worker forever.
-• Syscall errors: retry on EINTR; loop on short reads and writes; back off on EMFILE and ENFILE; close on EPIPE (SIGPIPE is ignored).
+- HTTP parsing: request line only; read until \r\n\r\n is complete, handling split reads. Respond 400 for malformed requests, 404 for unknown routes, 405 for the wrong method.
+- Socket timeouts: SO_RCVTIMEO and SO_SNDTIMEO, so a silent client cannot hold a worker forever.
+- Syscall errors: retry on EINTR; loop on short reads and writes; back off on EMFILE and ENFILE; close on EPIPE (SIGPIPE is ignored).
 
 ## Instrumentation, Load Generator, Live View
-Instrumentation is compield into the server and times every request with CLOCK_MONOTONIC, reporting overall averages as well as per route averages.
+Instrumentation is compiled into the server and times every request with CLOCK_MONOTONIC, reporting overall averages as well as per route averages.
 
 | Interval | From->To | What it shows |
 | -------- | -------- | ------------- |
-| Queue wait | enqueue -> dequeue | FIFO vs. priorirty, convoy effect, starvation |
+| Queue wait | enqueue -> dequeue | FIFO vs. priority, convoy effect, starvation |
 | Service time | dequeue -> done | Feeds tau; shows CPU contention
 | Server residence | accept -> done | Total time the server holds a request |
 | Lock wait | before lock -> acquired | Contention |
 
 We also record CPU time per request (`CLOCK_THREAD_CPUTIME_ID`), so service time minus CPU time is the time a worker was off the CPU. Voluntary and involuntary context switches come from `getrusage`, which is read *once* at *shutdown*. Client-side latency is measured by the load generator.
-- **Status:** one shraed struct under a mutex, used by both models. Each thread updates it once per request
+- **Status:** one shared struct under a mutex, used by both models. Each thread updates it once per request
 - **Worker states:** each worker writes its entry, no lock. The stats thread is responsible for reading them
 - **Stats thread:** every ~100ms it locks the status struct to copy it. Prints after copy is complete
-- **Overhead check:** `-DSTATS=-` compile-time switch used to measure the instrumentation overhead.
+- **Overhead check:** `-DSTATS=0` compile-time switch used to measure the instrumentation overhead.
 - **Output streams:** `stdout` carries line-buffered snapshots (t=12.3 rps=840 q=17/64 lockwait=3.1%...). Request lines, errors, and startup config go to `stderr`. Every request is logged to a file. CSV summaries are computed from request logs.
 - **Headless operation:** server never draws UI itself, so benchmarks run the same binary with no reader. If the reader stops reading the pipe, only the stats thread blocks, not the workers.
 
@@ -145,13 +150,13 @@ We identified eight sections of shared state. There is a protection for each; th
 
 | State # | Shared State | Writers / Readers|
 | ------- | ------------ | ---------------- |
-| 1 | Work queue (ring buffer or heap) | producer enequeues, workers dequeue |
+| 1 | Work queue (ring buffer or heap) | producer enqueues, workers dequeue |
 | 2 | Per-route tau | Workers write, producer read at enqueue |
 | 3 | Shutdown flag | Signal path writes, workers read |
 | 4 | Stats| All threads write after each request. Stats thread reads and `view` can display it|
 | 5 | RNG State| Every worker|
 | 6 | Logging| All threads|
-| 7 | Live thead count (thread-per-request) | Thread create and exit |
+| 7 | Live thread count (thread-per-request) | Thread create and exit |
 | 8 | Worker States | Each worker writes its own entry; stats thread reads the entry which can then be used by `view` |
 
 ### Course Requirements we are Following
@@ -163,14 +168,14 @@ We identified eight sections of shared state. There is a protection for each; th
 We have six experiments to produce evidence for the report and presentation. Every run uses a fixed seed, excludes any warm-up window, 3-5 repeats, if the machine has more than one core, pins client and server to separate cores. Again, on the VM this is not possible, so it will not happen and context-switching will create additional overhead as outlined before.
 | Experiment # (E) | Experiment | Variable(s) | What we are measuring | Expected Result | 
 | ------------ | ---------- | ----------- | --------------------- | --------------- |
-| 1 | Thread-per-request vs. pool | C (concurrent clients) | throughput, avg. latency, thread count, memory, failures  | Similar when C is low, thead-per-request degrades as C grows and then fails when C is large |
+| 1 | Thread-per-request vs. pool | C (concurrent clients) | throughput, avg. latency, thread count, memory, failures  | Similar when C is low, thread-per-request degrades as C grows and then fails when C is large |
 | 2 | Pool size vs. cores | Pool size; CPU-heavy vs. sleep-heavy | Throughput, service minus CPU time gap, involuntary context switches | On a single-core, CPU-heavy throughput peaks at a small pool and proceeds to fall as extra threads add context switch overhead. Sleep-heavy benefits from more threads |
-| 3 | Queue policy | FIFO vs. Priority: sweep the weight and alpha  | Average wait per route | priority lowers `/fast` wait and raises `/slow`. Smaller 'w' caps `/slow` wait time. `/bimodal` shows prediction failure. `/drift` shows how fast tau adapts per alpha |
-| 4 |Queue structure | Ring buffer (FIFO) vs. heap (priority) | Queue lock wait, contended &%, throughput | The heap lengthens the critical section and raises the lock wait | 
+| 3 | Queue policy | FIFO vs. Priority: sweep the weight and alpha  | Average wait per route | priority lowers `/fast` wait and raises `/slow`. Smaller 'w' caps `/slow` wait time. `/bimodal` shows prediction failure, and how much tau swings per alpha |
+| 4 |Queue structure | Ring buffer (FIFO) vs. heap (priority) | Queue lock wait, contended %, throughput | The heap lengthens the critical section and raises the lock wait | 
 | 5 | Full-queue behaviour | Queue capacity. Block vs. reject | Average latency, Rate of 503 errors returned | Larger queue means fewer errors but higher latency. Reject policy will put an upper-bound on the latency
-| 6 | Observer effect | Live view attached vs. headless. `stderr` vs `--quiet` flag | Throughput, latency | Almost no  difference  
+| 6 | Observer effect | Live view attached vs. headless. `stderr` vs `--quiet` flag | Throughput, latency | Almost no difference  
 
-E1 runs with ulimit -n raised so threads run out before file descriptors do. The E2 routes are `/fast`, `/slow`, and `/api`; E3 uses `/fast`, `/slow`, `/bimodal`, and `/drift`.
+E1 runs with ulimit -n raised so threads run out before file descriptors do. The E2 routes are `/fast`, `/slow`, and `/api`; E3 uses `/fast`, `/slow`, and `/bimodal`.
 Course concepts the experiments demonstrate:
 - Threads and resource limits: E1 shows creation cost, thread explosion, and EAGAIN.
 - CPU scheduling: E2 shows runnable threads against cores and preemption of CPU routes.
@@ -191,7 +196,7 @@ Three tools are checking concurrency. Each run becomes a test plan entry.\
 | Valgrind memcheck with `--track-fds=yes` | Leaks, use-after-free, uninitialized reads, fd leaks | One run covers memory and fds |
 
 - **Unit tests:** Unity, vendored once in `third_party/unity/`, with one test program per module.
-- ****Integration tests:** also Unity; a C test program starts `./server`, connects over real sockets, and checks the responses. They live in `src/server/tests/`.
+- **Integration tests:** also Unity; a C test program starts `./server`, connects over real sockets, and checks the responses. They live in `src/server/tests/`.
 - **Concurrency checks:** unit and integration tests also run under TSan, Helgrind, and memcheck.
 - **Ownership and timing:** the author of a ticket writes that ticket's tests, and we run make test by hand before merging.
 - **Debuggability:** threads are named with `pthread_setname_np` (`acceptor`, `worker-03`, `stats`, `signal`).
