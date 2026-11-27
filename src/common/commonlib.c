@@ -12,3 +12,8 @@ void wait_semaphore(sem_t *sem) {
 void post_semaphore(sem_t *sem) {
     sem_post(sem);
 }
+
+double get_elapsed_ms(const struct timespec *start, const struct timespec *end) {
+    long elapsed_ns = (end->tv_sec - start->tv_sec) * NS_PER_S + (end->tv_nsec - start->tv_nsec);
+    return elapsed_ns / NS_PER_MS;
+}

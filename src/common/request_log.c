@@ -51,7 +51,7 @@ static int write_log_entry(const int fd, const char *buffer, int line_length) {
 
     ssize_t bytes_written;
     do {
-        bytes_written = write(fd, buffer, line_length);        
+        bytes_written = write(fd, buffer, line_length);
     } while (bytes_written == ERROR && errno == EINTR);
 
     if (bytes_written != line_length) {
