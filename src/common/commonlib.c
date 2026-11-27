@@ -1,7 +1,7 @@
 #include "commonlib.h"
 
 #include <errno.h>
-#include <constants.h>
+#include "constants.h"
 
 void wait_semaphore(sem_t *sem) {
     while (sem_wait(sem) == ERROR && errno == EINTR) {
