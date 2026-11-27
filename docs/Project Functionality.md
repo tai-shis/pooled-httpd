@@ -159,6 +159,8 @@ We identified eight sections of shared state. There is a protection for each; th
 | 7 | Live thread count (thread-per-request) | Thread create and exit |
 | 8 | Worker States | Each worker writes its own entry; stats thread reads the entry which can then be used by `view` |
 
+**Logging (#6) protection:** no lock. The logger's fields are read-only after init. Each line is formatted into a per-call stack buffer and sent with one `write()` per destination. The log file is opened with `O_APPEND`, so each write lands whole at the end of the file, and lines are at most `PIPE_BUF` bytes, so writes to a stderr pipe are atomic.
+
 ### Course Requirements we are Following
 - **Thread-safe library usage:** before using any system call or library function, we check its man page ATTRIBUTES section for MT-Safe or MT-Unsafe and record each verdict in our [Programming Standards](./Programming%20Standard.md) document 
 - **Signal handlers:** they call only async-signal-safe functions (`man 7 signal safety` for information)

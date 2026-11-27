@@ -21,6 +21,11 @@ Every function used gets a row in the table below, added by whoever first uses i
 | `rand_r()` | MT-Safe | Each thread passes its own state. |
 | `nanosleep()` | No ATTRIBUTES section (system call) | Returns -1 with `errno` set to `EINTR` when interrupted; retry with the remaining time. |
 | `strcmp()` | MT-Safe | |
+| `snprintf()` | MT-Safe locale | Safe as long as nothing changes the locale while threads run. |
+| `open()` | No ATTRIBUTES section (system call) | |
+| `write()` | No ATTRIBUTES section (system call) | Atomic per call on a file opened with `O_APPEND`, and on pipes for writes up to `PIPE_BUF` bytes. Returns -1 with `errno` set to `EINTR` when interrupted; retry. |
+| `close()` | No ATTRIBUTES section (system call) | |
+| `clock_gettime()` | MT-Safe | |
 
 Signal handlers may only call **async-signal-safe** functions (`man 7 signal-safety`). `printf()`, `malloc()`, and `pthread_mutex_lock()` are not async-signal-safe.
 
