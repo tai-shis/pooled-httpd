@@ -1,6 +1,6 @@
 #include "listener.h"
 
-//remove once added to main and include constants.h
+// remove once added to main and include constants.h
 #include <errno.h>
 #include <stdio.h>
 #include <string.h>
@@ -43,12 +43,11 @@ int listener_open(int port, int backlog) {
 }
 
 static void backoff_ms(long ms) {
-    struct timespec ts = { ms / 1000, (ms % 1000) * 1000000L };
-    nanosleep(&ts, NULL);   /* an early wake from a signal is harmless here */
+    struct timespec ts = {ms / 1000, (ms % 1000) * 1000000L};
+    nanosleep(&ts, NULL); /* an early wake from a signal is harmless here */
 }
 
-int accept_loop(int listen_fd, volatile sig_atomic_t *stop,
-                conn_handler handler, void *ctx) {
+int accept_loop(int listen_fd, volatile sig_atomic_t *stop, conn_handler handler, void *ctx) {
     while (!*stop) {
         int cfd = accept(listen_fd, NULL, NULL);
         if (cfd >= 0) {
@@ -57,11 +56,11 @@ int accept_loop(int listen_fd, volatile sig_atomic_t *stop,
         }
 
         switch (errno) {
-        case EINTR:                 /* signal arrived: loop re-checks *stop */
-        case ECONNABORTED:          /* client gave up before we accepted */
+        case EINTR:        /* signal arrived: loop re-checks *stop */
+        case ECONNABORTED: /* client gave up before we accepted */
             continue;
         case EMFILE:
-        case ENFILE:                /* out of fds: don't spin, give workers time to close some */
+        case ENFILE: /* out of fds: don't spin, give workers time to close some */
             fprintf(stderr, "accept: out of file descriptors, backing off\n");
             backoff_ms(100);
             continue;

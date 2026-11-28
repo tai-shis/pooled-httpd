@@ -6,7 +6,10 @@
 
 static volatile sig_atomic_t g_stop = 0;
 
-static void on_signal(int sig) { (void)sig; g_stop = 1; }
+static void on_signal(int sig) {
+    (void)sig;
+    g_stop = 1;
+}
 
 static void drop_conn(int fd, void *ctx) {
     (void)ctx;
@@ -16,13 +19,15 @@ static void drop_conn(int fd, void *ctx) {
 }
 
 int main(void) {
-    struct sigaction sa = { .sa_handler = on_signal };   /* no SA_RESTART on purpose */
+    struct sigaction sa = {.sa_handler = on_signal}; /* no SA_RESTART on purpose */
     sigemptyset(&sa.sa_mask);
-    sigaction(SIGINT,  &sa, NULL);
+    sigaction(SIGINT, &sa, NULL);
     sigaction(SIGTERM, &sa, NULL);
 
     int lfd = listener_open(8080, 128);
-    if (lfd < 0) return 1;
+    if (lfd < 0) {
+        return 1;
+    }
 
     int rc = accept_loop(lfd, &g_stop, drop_conn, NULL);
     close(lfd);
