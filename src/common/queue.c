@@ -1,6 +1,7 @@
 #include "queue.h"
 #include "constants.h"
 #include "queue_fifo.h"
+#include "queue_priority.h"
 #include "commonlib.h"
 
 #include <stdlib.h>
@@ -89,6 +90,7 @@ static void insert_item(queue *q, queue_item item) {
         insert_item_fifo(q, item);
         break;
     case QUEUE_PRIORITY:
+        insert_item_priority(q, item);
         break;
     default:
         break;
@@ -164,6 +166,7 @@ static void remove_item(queue *q, queue_item *out) {
         remove_item_fifo(q, out);
         break;
     case QUEUE_PRIORITY:
+        remove_item_priority(q, out);
         break;
     default:
         break;
