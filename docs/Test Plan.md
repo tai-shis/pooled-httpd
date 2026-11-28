@@ -42,6 +42,14 @@ One row per test. Each ticket's author adds rows as their tests land.
 | `test_queue_capacity_one` | The smallest ring buffer wraps on every operation | Capacity 1; 10 rounds of push, try_push, pop | Each push returns `QUEUE_OK`, each try_push returns `QUEUE_FULL`, each pop returns the pushed id | PASS |
 | `test_queue_spmc_try_push` | Reject mode with 1 producer and many consumers | Capacity 2; 1 producer try_pushes 10,000 ids; 2 × cores consumers (min 4) | Every accepted id popped exactly once; no rejected id popped; each consumer's ids in increasing order | PASS |
 | `test_initialize_queue_rejects_invalid` | `initialize_queue()` rejects bad arguments | Capacity 0; capacity `SEM_VALUE_MAX + 1`; policy `99` | `NULL` with `errno` set to `EINVAL` for each | PASS |
+| `test_priority_pop_order` | Items pop in priority order, not push order | Capacity 5; push ids 3, 0, 4, 1, 2, each with cost = id × 1s | Pops return 0, 1, 2, 3, 4 | PASS |
+| `test_priority_ties_pop_in_push_order` | The sequence number breaks exact priority ties in push order | Capacity 7; insert ids 0 to 6 straight into the heap, all with the same `priority` | Removes return 0 to 6 | PASS |
+| `test_priority_mixed_push_pop` | Pushes and pops in between each other keep priority order | Capacity 4; push 4, 2, 6; pop; push 1, 5; pop twice; push 3; pop 3 times (cost = id × 1s) | Pops return 2, 1, 4, 3, 5, 6 | PASS |
+| `test_priority_aging` | An older item is served before a newer item with a lower cost, once it has waited longer than the cost difference | Capacity 2; push id 0 with cost 50ms; wait 100ms; push id 1 with cost 0 | Pops return 0, then 1 | PASS |
+| `test_priority_large_heap_order` | Priority order holds in a deep heap, where sift down runs through many levels and picks between both children | Capacity 1,000; ids 0 to 999 shuffled with a seeded `rand_r`; push each with cost = id × 1s | Pops return 0 to 999 in order, each id once | PASS |
+| `test_fifo_ignores_cost` | The FIFO policy does not order by cost | FIFO queue, capacity 3; push ids 0, 1, 2 with costs 3s, 2s, 1s | Pops return 0, 1, 2 | PASS |
+| `test_priority_try_push_order` | `queue_try_push()` sets priority the same as `queue_push()` | Capacity 5; try_push ids 3, 0, 4, 1, 2, each with cost = id × 1s | Each try_push returns `QUEUE_OK`; pops return 0, 1, 2, 3, 4 | PASS |
+| `test_priority_set_from_enqueue_time` | Push sets `enqueue_time` from the clock and `priority` from `enqueue_time` + `cost_ns` | Capacity 1; read `CLOCK_MONOTONIC` before and after pushing one item with cost 5s; pop it | `enqueue_time` is between the two clock reads; `priority` is between before + 5s and after + 5s | PASS |
 | `test_get_elapsed_ms_equal` | `get_elapsed_ms()` with the same start and end | 5.25s to 5.25s | `0` | PASS |
 | `test_get_elapsed_ms_whole_seconds` | Whole seconds only | 1s to 3s | `2000` | PASS |
 | `test_get_elapsed_ms_nanoseconds_only` | Difference under a second | 2.1s to 2.1005s | `0.5` | PASS |
@@ -69,3 +77,7 @@ One row per test. Each ticket's author adds rows as their tests land.
 | `test_log_request_concurrent` | Lines from different threads never mix | 8 threads × 1,000 calls; each thread uses its index as `wait_ms` | Every call returns `SUCCESS`; 8,000 lines, each well formed; 1,000 lines per thread | PASS |
 
 `log_request()` also returns `ERROR` when `snprintf` truncates the line. That case has no test: even `DBL_MAX` printed with `%.3f` fits well inside `MAX_LOG_BUFFER`, so it cannot be reached through the public function. The check stays as a safety net.
+
+The queue tests from `test_queue_push_blocks_when_full` to `test_queue_spmc_try_push` run once with the FIFO policy and once with the priority policy, and the output names each run `(fifo)` or `(priority)`. These tests do not set a cost, so the priority queue serves their items in push order and the same expected output applies to both policies. `test_queue_pop_order`, `test_queue_push_wraparound`, and `test_initialize_queue_rejects_invalid` run with FIFO only: the first two test the ring buffer, and argument checks do not depend on the policy.
+
+`test_priority_ties_pop_in_push_order` calls `insert_item_priority()` and `remove_item_priority()` directly, because `queue_push()` gives each item a different `enqueue_time` and so cannot make two priorities equal. The priority tests use costs 1s apart, so the few microseconds between pushes cannot change the order.
