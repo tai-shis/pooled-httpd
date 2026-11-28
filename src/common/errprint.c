@@ -1,5 +1,5 @@
 #include "include/errprint.h"
-#include "../constants.h"
+#include "constants.h"
 #include <stdio.h>
 #include <limits.h>
 

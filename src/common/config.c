@@ -1,5 +1,5 @@
 #include "include/config.h"
-#include "../constants.h"
+#include "constants.h"
 #include <string.h>
 #include <unistd.h>
 #include <getopt.h>

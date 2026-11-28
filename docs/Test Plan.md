@@ -42,3 +42,30 @@ One row per test. Each ticket's author adds rows as their tests land.
 | `test_queue_capacity_one` | The smallest ring buffer wraps on every operation | Capacity 1; 10 rounds of push, try_push, pop | Each push returns `QUEUE_OK`, each try_push returns `QUEUE_FULL`, each pop returns the pushed id | PASS |
 | `test_queue_spmc_try_push` | Reject mode with 1 producer and many consumers | Capacity 2; 1 producer try_pushes 10,000 ids; 2 × cores consumers (min 4) | Every accepted id popped exactly once; no rejected id popped; each consumer's ids in increasing order | PASS |
 | `test_initialize_queue_rejects_invalid` | `initialize_queue()` rejects bad arguments | Capacity 0; capacity `SEM_VALUE_MAX + 1`; policy `99` | `NULL` with `errno` set to `EINVAL` for each | PASS |
+| `test_get_elapsed_ms_equal` | `get_elapsed_ms()` with the same start and end | 5.25s to 5.25s | `0` | PASS |
+| `test_get_elapsed_ms_whole_seconds` | Whole seconds only | 1s to 3s | `2000` | PASS |
+| `test_get_elapsed_ms_nanoseconds_only` | Difference under a second | 2.1s to 2.1005s | `0.5` | PASS |
+| `test_get_elapsed_ms_borrow` | End's `tv_nsec` is smaller than start's | 1.9s to 2.1s | `200` | PASS |
+| `test_get_elapsed_ms_large_timestamps` | No precision loss with realistic monotonic values | 1000000.123456789s to 1000000.124456789s | `1` | PASS |
+| `test_get_elapsed_ms_end_before_start` | Reversed times give a negative result | 3s to 2.5s | `-500` | PASS |
+| `test_initialize_request_log_creates_file` | `initialize_request_log()` creates the log file | Path in an empty temp dir, stderr off | Non-`NULL` logger; file exists and is empty | PASS |
+| `test_initialize_request_log_truncates` | Old log content is cleared | File already holding `"old\n"` | File is empty after init | PASS |
+| `test_initialize_request_log_file_mode` | A new log file gets the right permissions | New path, `umask(022)` | Mode is `0644` | PASS |
+| `test_initialize_request_log_null_path` | No file logging | `NULL` path | Non-`NULL` logger; `log_fd` is `NO_FILE_LOGGING` | PASS |
+| `test_initialize_request_log_bad_path` | `open()` fails | Path in a directory that does not exist | `NULL` with `errno` set to `ENOENT` | PASS |
+| `test_free_request_log_null` | Freeing nothing is safe | `NULL` | No crash | PASS |
+| `test_free_request_log_closes_fd` | `free_request_log()` closes the log file | Save `log_fd`, then free | `fcntl(fd, F_GETFD)` fails with `EBADF` | PASS |
+| `test_log_request_writes_line` | `log_request()` writes the exact line format | `ROUTE_FAST`, 1.5, 2.25 | `SUCCESS`; file is `"route=/fast wait_ms=1.500 service_ms=2.250\n"` | PASS |
+| `test_log_request_rounding` | Times round to 3 decimals | `ROUTE_SLOW`, 1.23456, 0.0004 | `wait_ms=1.235 service_ms=0.000` | PASS |
+| `test_log_request_every_route` | Each route's path is used | Every id from `0` to `ROUTE_COUNT - 1` | Each line has the matching path | PASS |
+| `test_log_request_appends_lines` | Lines stack up in order | 3 calls with different routes and times | 3 lines, in call order | PASS |
+| `test_log_request_null_logger` | Rejects a missing logger | `NULL` logger | `ERROR` with `errno` set to `EINVAL` | PASS |
+| `test_log_request_invalid_route` | Rejects ids that are not routes | `ROUTE_UNKNOWN`, `ROUTE_COUNT` | `ERROR` with `errno` set to `EINVAL`; file still empty | PASS |
+| `test_log_request_stderr_copy` | The line goes to both destinations | File and stderr on; stderr redirected to a pipe | Same line in the file and on the pipe | PASS |
+| `test_log_request_quiet` | `--quiet` stops the stderr copy | File on, stderr off; stderr redirected to a pipe | Line in the file; pipe empty | PASS |
+| `test_log_request_stderr_only` | Stderr without a file | `NULL` path, stderr on | `SUCCESS`; line on the pipe | PASS |
+| `test_log_request_no_destinations` | Nothing to write to | `NULL` path, stderr off | `SUCCESS`; nothing written | PASS |
+| `test_log_request_write_failure` | A failed `write()` is reported | Path `/dev/full` (every write fails with `ENOSPC`) | `ERROR` | PASS |
+| `test_log_request_concurrent` | Lines from different threads never mix | 8 threads × 1,000 calls; each thread uses its index as `wait_ms` | Every call returns `SUCCESS`; 8,000 lines, each well formed; 1,000 lines per thread | PASS |
+
+`log_request()` also returns `ERROR` when `snprintf` truncates the line. That case has no test: even `DBL_MAX` printed with `%.3f` fits well inside `MAX_LOG_BUFFER`, so it cannot be reached through the public function. The check stays as a safety net.

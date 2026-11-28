@@ -11,7 +11,7 @@
  */
 #include "unity.h"
 #include "config.h"
-#include "../../constants.h"
+#include "constants.h"
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
