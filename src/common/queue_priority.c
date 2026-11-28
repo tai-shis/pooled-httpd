@@ -14,7 +14,7 @@ static bool is_higher_priority(const queue_item a, const queue_item b) {
     return a.priority < b.priority;
 }
 
-static void swap_items(const queue_item *a, const queue_item *b) {
+static void swap_items(queue_item *a, queue_item *b) {
     queue_item temp = *a;
     *a              = *b;
     *b              = temp;

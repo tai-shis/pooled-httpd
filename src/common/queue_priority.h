@@ -20,7 +20,6 @@ void insert_item_priority(queue *q, queue_item item);
  * Caller must hold the queue's mutex before calling this function.
  * Assumes that priority is set and count > 0.
  *
- *
  * @param q The queue to remove from
  * @param out The location to store the removed item
  */
