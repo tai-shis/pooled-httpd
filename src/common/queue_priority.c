@@ -5,13 +5,13 @@
 // many of these functions were found online from a forum talking about
 // implementing a priority queue using a binary heap.
 
-static bool is_higher_priority(const queue_item a, const queue_item b) {
-    if (a.priority == b.priority) {
+static bool is_higher_priority(const queue_item *a, const queue_item *b) {
+    if (a->priority == b->priority) {
         // If priorities are equal, use sequence number to maintain FIFO order
-        return a.sequence < b.sequence;
+        return a->sequence < b->sequence;
     }
 
-    return a.priority < b.priority;
+    return a->priority < b->priority;
 }
 
 static void swap_items(queue_item *a, queue_item *b) {
@@ -36,7 +36,7 @@ static size_t parent_of(size_t index) {
 // I kind of understand, but its about reordering on
 // insert/removal of items to maintain priority
 static void heapify_up(queue_item *items, size_t index) {
-    while (index > 0 && is_higher_priority(items[index], items[parent_of(index)])) {
+    while (index > 0 && is_higher_priority(&items[index], &items[parent_of(index)])) {
         swap_items(&items[index], &items[parent_of(index)]);
         index = parent_of(index);
     }
@@ -49,12 +49,12 @@ static void heapify_down(queue_item *items, size_t index, size_t count) {
         size_t right_child = right_child_of(index);
 
         // check if right child exists and is higher priority than left child
-        if (right_child < count && is_higher_priority(items[right_child], items[child])) {
+        if (right_child < count && is_higher_priority(&items[right_child], &items[child])) {
             child = right_child;
         }
 
         // if the current item is higher priority than the highest priority child, we're done
-        if (is_higher_priority(items[index], items[child])) {
+        if (is_higher_priority(&items[index], &items[child])) {
             break;
         }
 
