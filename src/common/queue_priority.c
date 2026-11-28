@@ -14,7 +14,7 @@ static bool is_higher_priority(const queue_item a, const queue_item b) {
     return a.priority < b.priority;
 }
 
-static void swap_items(queue_item *a, queue_item *b) {
+static void swap_items(const queue_item *a, const queue_item *b) {
     queue_item temp = *a;
     *a              = *b;
     *b              = temp;
@@ -35,14 +35,14 @@ static size_t parent_of(size_t index) {
 // following 2 are heapify functions
 // I kind of understand, but its about reordering on
 // insert/removal of items to maintain priority
-static void heapify_up(const queue_item *items, size_t index) {
+static void heapify_up(queue_item *items, size_t index) {
     while (index > 0 && is_higher_priority(items[index], items[parent_of(index)])) {
         swap_items(&items[index], &items[parent_of(index)]);
         index = parent_of(index);
     }
 }
 
-static void heapify_down(const queue_item *items, size_t index, size_t count) {
+static void heapify_down(queue_item *items, size_t index, size_t count) {
     while (left_child_of(index) < count) {
         // assume left child is the highest priority
         size_t child       = left_child_of(index);
@@ -62,4 +62,18 @@ static void heapify_down(const queue_item *items, size_t index, size_t count) {
         swap_items(&items[index], &items[child]);
         index = child;
     }
+}
+
+void insert_item_priority(queue *q, queue_item item) {
+    item.sequence      = q->next_sequence++;
+    q->items[q->count] = item;
+    heapify_up(q->items, q->count);
+    q->count++;
+}
+
+void remove_item_priority(queue *q, queue_item *out) {
+    *out = q->items[0];
+    q->count--;
+    q->items[0] = q->items[q->count];
+    heapify_down(q->items, 0, q->count);
 }
