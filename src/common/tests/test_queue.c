@@ -1,6 +1,8 @@
 #include "unity.h"
 
 #include "queue.h"
+#include "constants.h"
+#include "../queue_priority.h"
 
 #include <errno.h>
 #include <limits.h>
@@ -18,8 +20,30 @@
 #define WRAPAROUND_ITEMS 10
 #define WRAPAROUND_CAP 3
 #define CAPACITY_ONE_LOOP 10
+// one second, so the microseconds between pushes cannot reorder costed items
+#define COST_STEP_NS NS_PER_S
+#define PRIORITY_ORDER_COUNT 5
+#define TIE_COUNT 7
+#define TIED_PRIORITY 1000
+#define MIXED_CAPACITY 4
+#define AGING_OLD_COST_NS 50000000L
+#define AGING_WAIT_NS 100000000L
+#define LARGE_HEAP_COUNT 1000
+#define LARGE_HEAP_SEED 42
+#define FIFO_COST_COUNT 3
+#define STAMP_COST_STEPS 5
 
-static queue *q;
+// Runs a test that does not depend on the policy once under each policy.
+#define RUN_SHARED_TEST(fn)                                                                        \
+    do {                                                                                           \
+        test_policy = QUEUE_FIFO;                                                                  \
+        UnityDefaultTestRun(fn, #fn " (fifo)", __LINE__);                                          \
+        test_policy = QUEUE_PRIORITY;                                                              \
+        UnityDefaultTestRun(fn, #fn " (priority)", __LINE__);                                      \
+    } while (0)
+
+static queue       *q;
+static queue_policy test_policy = QUEUE_FIFO;
 
 typedef struct {
     queue       *q;
@@ -56,11 +80,33 @@ static queue_item make_item(int id) {
     return item;
 }
 
-static void sleep_for_block_check(void) {
-    struct timespec delay = {0, BLOCK_CHECK_NS};
+static int64_t cost_steps(int steps) {
+    return (int64_t)steps * COST_STEP_NS;
+}
+
+static queue_item make_costed_item(int id, int64_t cost_ns) {
+    queue_item item = make_item(id);
+    item.cost_ns    = cost_ns;
+    return item;
+}
+
+static void push_costed(int id, int64_t cost_ns) {
+    TEST_ASSERT_EQUAL_INT(QUEUE_OK, queue_push(q, make_costed_item(id, cost_ns)));
+}
+
+static int64_t timespec_to_ns(const struct timespec *time) {
+    return (int64_t)time->tv_sec * NS_PER_S + time->tv_nsec;
+}
+
+static void sleep_for_ns(long ns) {
+    struct timespec delay = {0, ns};
     while (nanosleep(&delay, &delay) == -1 && errno == EINTR) {
         continue;
     }
+}
+
+static void sleep_for_block_check(void) {
+    sleep_for_ns(BLOCK_CHECK_NS);
 }
 
 static int consumer_count(void) {
@@ -120,9 +166,9 @@ static void start_thread(pthread_t *thread, void *(*fn)(void *), void *arg) {
 }
 
 // Runs 1 producer against consumer_count() consumers, then checks every id
-// the producer got QUEUE_OK for was popped exactly once and in FIFO order.
+// the producer got QUEUE_OK for was popped exactly once and in push order.
 static void run_spmc(bool use_try_push) {
-    q = initialize_queue(QUEUE_FIFO, SPMC_CAPACITY);
+    q = initialize_queue(test_policy, SPMC_CAPACITY);
     TEST_ASSERT_NOT_NULL(q);
 
     int            consumers = consumer_count();
@@ -212,7 +258,7 @@ void test_queue_push_wraparound(void) {
 }
 
 void test_queue_push_blocks_when_full(void) {
-    q = initialize_queue(QUEUE_FIFO, 2);
+    q = initialize_queue(test_policy, 2);
     TEST_ASSERT_NOT_NULL(q);
     fill_queue(2);
 
@@ -236,7 +282,7 @@ void test_queue_push_blocks_when_full(void) {
 }
 
 void test_queue_pop_blocks_when_empty(void) {
-    q = initialize_queue(QUEUE_FIFO, 2);
+    q = initialize_queue(test_policy, 2);
     TEST_ASSERT_NOT_NULL(q);
 
     pthread_t      popper;
@@ -260,7 +306,7 @@ void test_queue_spmc_exactly_once(void) {
 }
 
 void test_shutdown_queue_wakes_poppers(void) {
-    q = initialize_queue(QUEUE_FIFO, 2);
+    q = initialize_queue(test_policy, 2);
     TEST_ASSERT_NOT_NULL(q);
 
     int             poppers = consumer_count();
@@ -289,7 +335,7 @@ void test_shutdown_queue_wakes_poppers(void) {
 }
 
 void test_queue_pop_drain(void) {
-    q = initialize_queue(QUEUE_FIFO, 3);
+    q = initialize_queue(test_policy, 3);
     TEST_ASSERT_NOT_NULL(q);
     fill_queue(3);
 
@@ -304,7 +350,7 @@ void test_queue_pop_drain(void) {
 }
 
 void test_shutdown_queue_wakes_pusher(void) {
-    q = initialize_queue(QUEUE_FIFO, 2);
+    q = initialize_queue(test_policy, 2);
     TEST_ASSERT_NOT_NULL(q);
     fill_queue(2);
 
@@ -320,7 +366,7 @@ void test_shutdown_queue_wakes_pusher(void) {
 }
 
 void test_queue_pop_after_drained(void) {
-    q = initialize_queue(QUEUE_FIFO, 2);
+    q = initialize_queue(test_policy, 2);
     TEST_ASSERT_NOT_NULL(q);
 
     shutdown_queue(q);
@@ -332,7 +378,7 @@ void test_queue_pop_after_drained(void) {
 }
 
 void test_shutdown_queue_rejected_pusher_keeps_items(void) {
-    q = initialize_queue(QUEUE_FIFO, 2);
+    q = initialize_queue(test_policy, 2);
     TEST_ASSERT_NOT_NULL(q);
     fill_queue(2);
 
@@ -353,7 +399,7 @@ void test_shutdown_queue_rejected_pusher_keeps_items(void) {
 }
 
 void test_queue_try_push_full(void) {
-    q = initialize_queue(QUEUE_FIFO, 2);
+    q = initialize_queue(test_policy, 2);
     TEST_ASSERT_NOT_NULL(q);
     fill_queue(2);
 
@@ -368,7 +414,7 @@ void test_queue_try_push_full(void) {
 }
 
 void test_queue_push_after_shutdown(void) {
-    q = initialize_queue(QUEUE_FIFO, 3);
+    q = initialize_queue(test_policy, 3);
     TEST_ASSERT_NOT_NULL(q);
 
     shutdown_queue(q);
@@ -381,7 +427,7 @@ void test_queue_push_after_shutdown(void) {
 }
 
 void test_queue_capacity_one(void) {
-    q = initialize_queue(QUEUE_FIFO, 1);
+    q = initialize_queue(test_policy, 1);
     TEST_ASSERT_NOT_NULL(q);
 
     for (int id = 0; id < CAPACITY_ONE_LOOP; id++) {
@@ -409,22 +455,175 @@ void test_initialize_queue_rejects_invalid(void) {
     TEST_ASSERT_EQUAL_INT(EINVAL, errno);
 }
 
+// Pushes ids 3, 0, 4, 1, 2 with cost = id steps, then checks they pop as 0 to 4.
+static void run_priority_pop_order(bool use_try_push) {
+    q = initialize_queue(QUEUE_PRIORITY, PRIORITY_ORDER_COUNT);
+    TEST_ASSERT_NOT_NULL(q);
+
+    int push_order[PRIORITY_ORDER_COUNT] = {3, 0, 4, 1, 2};
+    for (int i = 0; i < PRIORITY_ORDER_COUNT; i++) {
+        queue_item   item   = make_costed_item(push_order[i], cost_steps(push_order[i]));
+        queue_status status = use_try_push ? queue_try_push(q, item) : queue_push(q, item);
+        TEST_ASSERT_EQUAL_INT(QUEUE_OK, status);
+    }
+
+    for (int id = 0; id < PRIORITY_ORDER_COUNT; id++) {
+        assert_pop_equals(id);
+    }
+}
+
+static void shuffle_ids(int *ids, int count, unsigned int seed) {
+    for (int last = count - 1; last > 0; last--) {
+        int pick  = rand_r(&seed) % (last + 1);
+        int temp  = ids[last];
+        ids[last] = ids[pick];
+        ids[pick] = temp;
+    }
+}
+
+void test_priority_pop_order(void) {
+    run_priority_pop_order(false);
+}
+
+// queue_push stamps a different enqueue_time on every item, so exact ties are only
+// reachable by setting priority and inserting into the heap directly.
+void test_priority_ties_pop_in_push_order(void) {
+    q = initialize_queue(QUEUE_PRIORITY, TIE_COUNT);
+    TEST_ASSERT_NOT_NULL(q);
+
+    for (int id = 0; id < TIE_COUNT; id++) {
+        queue_item item = make_item(id);
+        item.priority   = TIED_PRIORITY;
+        insert_item_priority(q, item);
+    }
+
+    for (int id = 0; id < TIE_COUNT; id++) {
+        queue_item item;
+        remove_item_priority(q, &item);
+        TEST_ASSERT_EQUAL_INT(id, item.fd);
+    }
+}
+
+void test_priority_mixed_push_pop(void) {
+    q = initialize_queue(QUEUE_PRIORITY, MIXED_CAPACITY);
+    TEST_ASSERT_NOT_NULL(q);
+
+    // each id is also its cost in steps
+    push_costed(4, cost_steps(4));
+    push_costed(2, cost_steps(2));
+    push_costed(6, cost_steps(6));
+    assert_pop_equals(2);
+
+    push_costed(1, cost_steps(1));
+    push_costed(5, cost_steps(5));
+    assert_pop_equals(1);
+    assert_pop_equals(4);
+
+    push_costed(3, cost_steps(3));
+    assert_pop_equals(3);
+    assert_pop_equals(5);
+    assert_pop_equals(6);
+}
+
+// id 0 has priority t + 50ms; id 1, pushed 100ms later with no cost, has t + 100ms.
+void test_priority_aging(void) {
+    q = initialize_queue(QUEUE_PRIORITY, 2);
+    TEST_ASSERT_NOT_NULL(q);
+
+    push_costed(0, AGING_OLD_COST_NS);
+    sleep_for_ns(AGING_WAIT_NS);
+    push_costed(1, 0);
+
+    assert_pop_equals(0);
+    assert_pop_equals(1);
+}
+
+void test_priority_large_heap_order(void) {
+    q = initialize_queue(QUEUE_PRIORITY, LARGE_HEAP_COUNT);
+    TEST_ASSERT_NOT_NULL(q);
+
+    int ids[LARGE_HEAP_COUNT];
+    for (int id = 0; id < LARGE_HEAP_COUNT; id++) {
+        ids[id] = id;
+    }
+    shuffle_ids(ids, LARGE_HEAP_COUNT, LARGE_HEAP_SEED);
+
+    for (int i = 0; i < LARGE_HEAP_COUNT; i++) {
+        push_costed(ids[i], cost_steps(ids[i]));
+    }
+
+    for (int id = 0; id < LARGE_HEAP_COUNT; id++) {
+        assert_pop_equals(id);
+    }
+}
+
+// costs fall as ids rise, so ordering by cost would pop 2, 1, 0
+void test_fifo_ignores_cost(void) {
+    q = initialize_queue(QUEUE_FIFO, FIFO_COST_COUNT);
+    TEST_ASSERT_NOT_NULL(q);
+
+    for (int id = 0; id < FIFO_COST_COUNT; id++) {
+        push_costed(id, cost_steps(FIFO_COST_COUNT - id));
+    }
+
+    for (int id = 0; id < FIFO_COST_COUNT; id++) {
+        assert_pop_equals(id);
+    }
+}
+
+void test_priority_try_push_order(void) {
+    run_priority_pop_order(true);
+}
+
+void test_priority_set_from_enqueue_time(void) {
+    q = initialize_queue(QUEUE_PRIORITY, 1);
+    TEST_ASSERT_NOT_NULL(q);
+
+    int64_t         cost_ns = cost_steps(STAMP_COST_STEPS);
+    struct timespec before;
+    struct timespec after;
+
+    clock_gettime(CLOCK_MONOTONIC, &before);
+    push_costed(0, cost_ns);
+    clock_gettime(CLOCK_MONOTONIC, &after);
+
+    queue_item item;
+    TEST_ASSERT_EQUAL_INT(QUEUE_OK, queue_pop(q, &item));
+
+    int64_t before_ns  = timespec_to_ns(&before);
+    int64_t after_ns   = timespec_to_ns(&after);
+    int64_t enqueue_ns = timespec_to_ns(&item.enqueue_time);
+
+    TEST_ASSERT_TRUE(enqueue_ns >= before_ns);
+    TEST_ASSERT_TRUE(enqueue_ns <= after_ns);
+    TEST_ASSERT_TRUE(item.priority >= before_ns + cost_ns);
+    TEST_ASSERT_TRUE(item.priority <= after_ns + cost_ns);
+}
+
 int main(void) {
     UNITY_BEGIN();
     RUN_TEST(test_queue_pop_order);
     RUN_TEST(test_queue_push_wraparound);
-    RUN_TEST(test_queue_push_blocks_when_full);
-    RUN_TEST(test_queue_pop_blocks_when_empty);
-    RUN_TEST(test_queue_spmc_exactly_once);
-    RUN_TEST(test_shutdown_queue_wakes_poppers);
-    RUN_TEST(test_queue_pop_drain);
-    RUN_TEST(test_shutdown_queue_wakes_pusher);
-    RUN_TEST(test_queue_pop_after_drained);
-    RUN_TEST(test_shutdown_queue_rejected_pusher_keeps_items);
-    RUN_TEST(test_queue_try_push_full);
-    RUN_TEST(test_queue_push_after_shutdown);
-    RUN_TEST(test_queue_capacity_one);
-    RUN_TEST(test_queue_spmc_try_push);
+    RUN_SHARED_TEST(test_queue_push_blocks_when_full);
+    RUN_SHARED_TEST(test_queue_pop_blocks_when_empty);
+    RUN_SHARED_TEST(test_queue_spmc_exactly_once);
+    RUN_SHARED_TEST(test_shutdown_queue_wakes_poppers);
+    RUN_SHARED_TEST(test_queue_pop_drain);
+    RUN_SHARED_TEST(test_shutdown_queue_wakes_pusher);
+    RUN_SHARED_TEST(test_queue_pop_after_drained);
+    RUN_SHARED_TEST(test_shutdown_queue_rejected_pusher_keeps_items);
+    RUN_SHARED_TEST(test_queue_try_push_full);
+    RUN_SHARED_TEST(test_queue_push_after_shutdown);
+    RUN_SHARED_TEST(test_queue_capacity_one);
+    RUN_SHARED_TEST(test_queue_spmc_try_push);
     RUN_TEST(test_initialize_queue_rejects_invalid);
+    RUN_TEST(test_priority_pop_order);
+    RUN_TEST(test_priority_ties_pop_in_push_order);
+    RUN_TEST(test_priority_mixed_push_pop);
+    RUN_TEST(test_priority_aging);
+    RUN_TEST(test_priority_large_heap_order);
+    RUN_TEST(test_fifo_ignores_cost);
+    RUN_TEST(test_priority_try_push_order);
+    RUN_TEST(test_priority_set_from_enqueue_time);
     return UNITY_END();
 }

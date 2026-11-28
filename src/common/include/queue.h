@@ -5,6 +5,7 @@
 
 #include <semaphore.h>
 #include <stdbool.h>
+#include <stdint.h>
 
 typedef struct queue queue;
 
@@ -30,6 +31,7 @@ struct queue {
     sem_t        mutex;
     sem_t        empty_slots;
     sem_t        full_slots;
+    uint64_t     next_sequence; // next sequence number, mutex protected, priority only
 };
 
 /**
@@ -52,6 +54,7 @@ void free_queue(queue *q);
 
 /**
  * @brief Pushes an item onto the queue, blocking if the queue is full
+ *
  * @param q The queue to push onto
  * @param item The item to push onto the queue
  *

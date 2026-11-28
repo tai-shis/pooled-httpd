@@ -1,6 +1,7 @@
 #include "queue.h"
 #include "constants.h"
 #include "queue_fifo.h"
+#include "queue_priority.h"
 #include "commonlib.h"
 
 #include <stdlib.h>
@@ -54,12 +55,13 @@ queue *initialize_queue(queue_policy policy, size_t capacity) {
         return NULL;
     }
 
-    q->policy   = policy;
-    q->capacity = capacity;
-    q->head     = 0;
-    q->tail     = 0;
-    q->count    = 0;
-    q->shutdown = false;
+    q->policy        = policy;
+    q->capacity      = capacity;
+    q->head          = 0;
+    q->tail          = 0;
+    q->count         = 0;
+    q->shutdown      = false;
+    q->next_sequence = 0;
 
     if (initialize_queue_semaphores(q) == ERROR) {
         free(q->items);
@@ -88,10 +90,20 @@ static void insert_item(queue *q, queue_item item) {
         insert_item_fifo(q, item);
         break;
     case QUEUE_PRIORITY:
+        insert_item_priority(q, item);
         break;
     default:
         break;
     }
+}
+
+static int64_t timespec_to_ns(const struct timespec *ts) {
+    return (int64_t)ts->tv_sec * NS_PER_S + (int64_t)ts->tv_nsec;
+}
+
+static void populate_priority_fields(queue_item *item) {
+    clock_gettime(CLOCK_MONOTONIC, &item->enqueue_time);
+    item->priority = timespec_to_ns(&item->enqueue_time) + item->cost_ns;
 }
 
 queue_status queue_push(queue *q, queue_item item) {
@@ -101,7 +113,7 @@ queue_status queue_push(queue *q, queue_item item) {
 
     wait_semaphore(&q->empty_slots);
 
-    clock_gettime(CLOCK_MONOTONIC, &item.enqueue_time);
+    populate_priority_fields(&item);
 
     wait_semaphore(&q->mutex);
     if (q->shutdown) {
@@ -131,7 +143,7 @@ queue_status queue_try_push(queue *q, queue_item item) {
         }
     }
 
-    clock_gettime(CLOCK_MONOTONIC, &item.enqueue_time);
+    populate_priority_fields(&item);
 
     wait_semaphore(&q->mutex);
     if (q->shutdown) {
@@ -154,6 +166,7 @@ static void remove_item(queue *q, queue_item *out) {
         remove_item_fifo(q, out);
         break;
     case QUEUE_PRIORITY:
+        remove_item_priority(q, out);
         break;
     default:
         break;
